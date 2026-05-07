@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import axios from 'axios'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function App() {
 
   const [activeCard, setActiveCard] = useState(null)
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState("")
+  const [comparison, setComparison] = useState("")
+  const [ideas, setIdeas] = useState("")
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [uploadMessages, setUploadMessages] = useState([])
+  const [paperList, setPaperList] = useState([])
 
   const askAI = async () => {
 
@@ -21,6 +28,71 @@ function App() {
       )
 
       setAnswer(response.data.answer)
+
+    } catch (error) {
+      console.error(error)
+    }
+
+  }
+
+  const compareAI = async () => {
+
+    try {
+
+      const response = await axios.get(
+        'http://127.0.0.1:8000/compare'
+      )
+
+      setComparison(response.data.comparison)
+
+    } catch (error) {
+      console.error(error)
+    }
+
+  }
+
+  const generateIdeas = async () => {
+
+    try {
+
+      const response = await axios.get(
+        'http://127.0.0.1:8000/ideas'
+      )
+
+      setIdeas(response.data.ideas)
+
+    } catch (error) {
+      console.error(error)
+    }
+
+  }
+
+  const uploadPDF = async (file) => {
+
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+
+      const response = await axios.post(
+        'http://127.0.0.1:8000/upload',
+        formData
+      )
+
+      setUploadMessages((prev) => [
+        ...prev,
+        response.data.message
+      ])
+
+      setPaperList((prev) => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          name: file.name
+        }
+      ])
 
     } catch (error) {
       console.error(error)
@@ -50,14 +122,85 @@ function App() {
              📄 Upload Research Papers
           </h2>
 
-          <div className="border-2 border-dashed border-cyan-400 rounded-2xl p-12 text-center hover:bg-cyan-500/10 transition duration-300 cursor-pointer">
-            <p className="text-2xl font-medium text-cyan-300">
-              Drag & Drop PDFs Here
+          <div className="border-2 border-dashed border-cyan-400 rounded-2xl p-12 text-center hover:bg-cyan-500/10 transition duration-300">
+
+            <input
+              type="file"
+              accept=".pdf"
+              multiple
+              onChange={(e) => {
+
+                const files = Array.from(e.target.files)
+
+                files.forEach((file) => {
+                  uploadPDF(file)
+                })
+
+              }}
+              className="text-white"
+            />
+
+            <p className="text-gray-400 mt-4">
+              Upload research papers for AI analysis
             </p>
 
-            <p className="text-gray-400 mt-3">
-              Upload multiple research papers for AI-powered analysis
-            </p>
+            <div className="mt-4 space-y-2">
+              {uploadMessages.map((msg, index) => (
+                <p
+                  key={index}
+                  className="text-cyan-300"
+                >
+                  {msg}
+                </p>
+              ))}
+            </div>
+
+            {paperList.length > 0 && (
+              <div className="mt-6 bg-black/30 rounded-2xl p-5 border border-white/10 text-left">
+
+                <h3 className="text-lg font-semibold text-cyan-300 mb-3">
+                  Uploaded Paper Mapping
+                </h3>
+
+                <div className="space-y-3">
+                  {paperList.map((paper) => (
+                    <div
+                      key={paper.id}
+                      className="flex items-center justify-between bg-white/5 px-4 py-3 rounded-xl border border-white/10"
+                    >
+
+                      <div className="text-gray-300 break-all pr-4">
+                        📘 Paper {paper.id} → {paper.name}
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+
+                          setPaperList((prev) =>
+                            prev.filter(
+                              (p) => p.id !== paper.id
+                            )
+                          )
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition duration-300 whitespace-nowrap"
+                      >
+                        Remove
+                      </button>
+
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-xs text-gray-400 mt-4">
+                  Removing a paper only updates the UI.
+                  To fully rebuild the AI knowledge base,
+                  delete vectorstore files and re-upload remaining papers.
+                </p>
+
+              </div>
+            )}
+
           </div>
 
         </div>
@@ -110,9 +253,11 @@ function App() {
                     AI Response
                   </h3>
 
-                  <p className="text-gray-300 leading-relaxed">
-                    {answer || 'Your AI-generated research answer will appear here.'}
-                  </p>
+                  <div className="text-gray-300 leading-relaxed prose prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {answer || 'Your AI-generated research answer will appear here.'}
+                    </ReactMarkdown>
+                  </div>
                 </div>
 
               </div>
@@ -142,7 +287,10 @@ function App() {
               <div className="mt-8 transition-all duration-500">
 
                 <button
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    compareAI()
+                  }}
                   className="bg-purple-500 hover:bg-purple-400 text-white font-semibold px-8 py-3 rounded-xl transition duration-300"
                 >
                   Compare Papers
@@ -153,9 +301,11 @@ function App() {
                     Comparison Results
                   </h3>
 
-                  <p className="text-gray-300 leading-relaxed">
-                    Technical paper comparison results will appear here.
-                  </p>
+                  <div className="text-gray-300 leading-relaxed prose prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {comparison || 'Technical paper comparison results will appear here.'}
+                    </ReactMarkdown>
+                  </div>
                 </div>
 
               </div>
@@ -185,7 +335,10 @@ function App() {
               <div className="mt-8 transition-all duration-500">
 
                 <button
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    generateIdeas()
+                  }}
                   className="bg-green-500 hover:bg-green-400 text-black font-semibold px-8 py-3 rounded-xl transition duration-300"
                 >
                   Generate Ideas
@@ -196,9 +349,11 @@ function App() {
                     AI Innovation Suggestions
                   </h3>
 
-                  <p className="text-gray-300 leading-relaxed">
-                    AI-generated future research ideas will appear here.
-                  </p>
+                  <div className="text-gray-300 leading-relaxed prose prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {ideas || 'AI-generated future research ideas will appear here.'}
+                    </ReactMarkdown>
+                  </div>
                 </div>
 
               </div>
