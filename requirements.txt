@@ -1,4 +1,3 @@
-```txt
 streamlit
 pypdf
 sentence-transformers
