@@ -5,6 +5,8 @@ import numpy as np
 import faiss
 import requests
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 st.set_page_config(page_title="AI Research Co-Pilot", layout="wide")
 
@@ -203,6 +205,7 @@ Answer:
 
             else:
                 groq_api_key = os.getenv("GROQ_API_KEY")
+                print("API KEY FOUND:", groq_api_key is not None)
 
                 response = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
@@ -218,7 +221,13 @@ Answer:
                     }
                 )
 
-                answer = response.json()["choices"][0]["message"]["content"]
+                response_json = response.json()
+                print("Groq Response:", response_json)
+
+                if "choices" in response_json:
+                    answer = response_json["choices"][0]["message"]["content"]
+                else:
+                    answer = f"Groq API Error: {response_json}"
 
         st.session_state.chat_history.append({
             "question": question,
@@ -289,6 +298,7 @@ Output format:
                 comparison_answer = response.json()["response"]
             else:
                 groq_api_key = os.getenv("GROQ_API_KEY")
+                print("API KEY FOUND:", groq_api_key is not None)
 
                 response = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
@@ -304,7 +314,13 @@ Output format:
                     }
                 )
 
-                comparison_answer = response.json()["choices"][0]["message"]["content"]
+                response_json = response.json()
+                print("Groq Response:", response_json)
+
+                if "choices" in response_json:
+                    comparison_answer = response_json["choices"][0]["message"]["content"]
+                else:
+                    comparison_answer = f"Groq API Error: {response_json}"
 
         with col2:
             st.markdown(f"""
@@ -364,6 +380,7 @@ Output format:
 
             else:
                 groq_api_key = os.getenv("GROQ_API_KEY")
+                print("API KEY FOUND:", groq_api_key is not None)
 
                 response = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
@@ -379,7 +396,13 @@ Output format:
                     }
                 )
 
-                suggestion_answer = response.json()["choices"][0]["message"]["content"]
+                response_json = response.json()
+                print("Groq Response:", response_json)
+
+                if "choices" in response_json:
+                    suggestion_answer = response_json["choices"][0]["message"]["content"]
+                else:
+                    suggestion_answer = f"Groq API Error: {response_json}"
 
         st.markdown("---")
         st.subheader("💡 AI-Generated Research Suggestions")

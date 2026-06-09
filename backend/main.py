@@ -3,7 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 
-from rag_pipeline import process_pdf, ask_question, compare_papers, generate_research_ideas
+from rag_pipeline import (
+    process_pdf,
+    ask_question,
+    compare_papers,
+    generate_research_ideas,
+    recommend_related_papers
+)
 
 app = FastAPI()
 
@@ -68,4 +74,14 @@ def ideas():
 
     return {
         "ideas": result
+    }
+
+
+@app.get("/recommend")
+def recommend():
+
+    result = recommend_related_papers()
+
+    return {
+        "papers": result
     }

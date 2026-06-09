@@ -91,7 +91,7 @@ def ask_question(question):
             requested_paper = int(
                 paper_match.group(1)
             )
-
+/≥
             docs = vectorstore.similarity_search(
                 "",
                 k=100
@@ -327,3 +327,90 @@ Generate at least 3 strong research ideas.
 
     except Exception as e:
         return f"Idea Generation Error: {str(e)}"
+
+
+# New function: recommend_related_papers
+def recommend_related_papers():
+
+    if not os.path.exists("vectorstore/index.faiss"):
+        return [
+            {
+                "title": "No papers uploaded",
+                "reason": "Upload papers first to get recommendations.",
+                "url": ""
+            }
+        ]
+
+    try:
+
+        vectorstore = FAISS.load_local(
+            "vectorstore",
+            embedding_model,
+            allow_dangerous_deserialization=True
+        )
+
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 10,
+                "fetch_k": 20
+            }
+        )
+
+        docs = retriever.invoke(
+            "research topic abstract methodology application domain"
+        )
+
+        context = "\n\n".join(
+            [doc.page_content for doc in docs]
+        )
+
+        prompt = f"""
+You are a research discovery assistant.
+
+Analyze the uploaded research papers and recommend 5 closely related research papers.
+
+For each recommendation provide:
+- Title
+- Why it is relevant
+- A short search phrase
+
+Return the response exactly in this format:
+
+Title: <paper title>
+Reason: <why relevant>
+Search: <search phrase>
+
+Research Context:
+{context}
+"""
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.5
+        )
+
+        answer = response.choices[0].message.content
+
+        return [
+            {
+                "title": "AI Recommended Papers",
+                "reason": answer,
+                "url": ""
+            }
+        ]
+
+    except Exception as e:
+        return [
+            {
+                "title": "Recommendation Error",
+                "reason": str(e),
+                "url": ""
+            }
+        ]
