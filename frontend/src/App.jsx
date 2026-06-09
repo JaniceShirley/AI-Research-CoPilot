@@ -10,6 +10,7 @@ function App() {
   const [answer, setAnswer] = useState("")
   const [comparison, setComparison] = useState("")
   const [ideas, setIdeas] = useState("")
+  const [recommendations, setRecommendations] = useState([])
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploadMessages, setUploadMessages] = useState([])
   const [paperList, setPaperList] = useState([])
@@ -60,6 +61,22 @@ function App() {
       )
 
       setIdeas(response.data.ideas)
+
+    } catch (error) {
+      console.error(error)
+    }
+
+  }
+
+  const recommendPapers = async () => {
+
+    try {
+
+      const response = await axios.get(
+        'http://127.0.0.1:8000/recommend'
+      )
+
+      setRecommendations(response.data.papers)
 
     } catch (error) {
       console.error(error)
@@ -354,6 +371,70 @@ function App() {
                       {ideas || 'AI-generated future research ideas will appear here.'}
                     </ReactMarkdown>
                   </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* Related Papers */}
+          <div
+            onClick={() => setActiveCard(activeCard === 'recommend' ? null : 'recommend')}
+            className={`
+              bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-8 shadow-2xl cursor-pointer
+              transition-all duration-700 hover:scale-[1.02]
+              ${activeCard === 'recommend' ? 'flex-[3] min-h-[600px]' : 'flex-1'}
+              ${activeCard && activeCard !== 'recommend' ? 'opacity-30 scale-90 blur-[1px]' : ''}
+            `}
+          >
+            <h2 className="text-3xl font-semibold mb-4">
+              📚 Related Papers
+            </h2>
+
+            <p className="text-gray-300 mb-6">
+              Discover research papers related to your uploaded documents.
+            </p>
+
+            {activeCard === 'recommend' && (
+              <div className="mt-8 transition-all duration-500">
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    recommendPapers()
+                  }}
+                  className="bg-orange-500 hover:bg-orange-400 text-black font-semibold px-8 py-3 rounded-xl transition duration-300"
+                >
+                  Recommend Papers
+                </button>
+
+                <div className="mt-8 bg-black/40 rounded-2xl p-6 border border-white/10">
+                  <h3 className="text-xl font-semibold mb-4 text-orange-300">
+                    Recommended Papers
+                  </h3>
+
+                  {recommendations.length > 0 ? (
+                    <div className="space-y-4">
+                      {recommendations.map((paper, index) => (
+                        <div
+                          key={index}
+                          className="bg-white/5 p-4 rounded-xl border border-white/10"
+                        >
+                          <h4 className="font-semibold text-orange-200 mb-2">
+                            {paper.title}
+                          </h4>
+
+                          <p className="text-gray-300">
+                            {paper.reason}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-300">
+                      Related paper recommendations will appear here.
+                    </p>
+                  )}
                 </div>
 
               </div>
