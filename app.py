@@ -6,6 +6,8 @@ import faiss
 import requests
 import os
 from dotenv import load_dotenv
+import webbrowser
+from urllib.parse import quote_plus
 load_dotenv()
 
 st.set_page_config(page_title="AI Research Co-Pilot", layout="wide")
@@ -113,6 +115,7 @@ if uploaded_files:
 
         compare_button = st.button("📊 Compare Papers")
         suggest_button = st.button("💡 Generate Research Ideas")
+        recommend_button = st.button("📚 Recommend Related Papers")
 
     if ask_button and question:
         question = question.lower().strip()
@@ -412,6 +415,70 @@ Output format:
         {suggestion_answer}
         </div>
         """, unsafe_allow_html=True)
+
+    if recommend_button:
+        with st.spinner("📚 Finding related papers..."):
+
+            recommendation_context = ""
+
+            for paper_name, paper_chunk_list in paper_chunks.items():
+                recommendation_context += f"\n\n===== PAPER: {paper_name} =====\n"
+                recommendation_context += "\n".join(paper_chunk_list[:3])
+
+            recommendation_prompt = f"""
+You are a research discovery assistant.
+
+Analyze the uploaded papers and recommend 5 closely related research papers.
+
+For each recommendation provide:
+1. Paper Title
+2. Why it is relevant
+3. Search Query
+
+Return ONLY in this format:
+
+TITLE: <paper title>
+REASON: <reason>
+QUERY: <search query>
+"""
+
+            if mode == "Offline (Ollama)":
+                response = requests.post(
+                    "http://localhost:11434/api/generate",
+                    json={
+                        "model": "llama3",
+                        "prompt": recommendation_prompt,
+                        "stream": False
+                    }
+                )
+                recommendation_answer = response.json()["response"]
+            else:
+                groq_api_key = os.getenv("GROQ_API_KEY")
+
+                response = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {groq_api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "llama3-8b-8192",
+                        "messages": [
+                            {"role": "user", "content": recommendation_prompt}
+                        ]
+                    }
+                )
+
+                response_json = response.json()
+
+                if "choices" in response_json:
+                    recommendation_answer = response_json["choices"][0]["message"]["content"]
+                else:
+                    recommendation_answer = f"Groq API Error: {response_json}"
+
+        st.markdown("---")
+        st.subheader("📚 Recommended Related Papers")
+        st.write(recommendation_answer)
 
     # STEP 4: Show Source Context at Bottom
     if ask_button and question:

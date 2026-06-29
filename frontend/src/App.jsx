@@ -191,14 +191,22 @@ function App() {
                       </div>
 
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation()
-
-                          setPaperList((prev) =>
-                            prev.filter(
-                              (p) => p.id !== paper.id
+                          try {
+                            await axios.delete(
+                              `http://127.0.0.1:8000/paper/${encodeURIComponent(paper.name)}`
                             )
-                          )
+                            setPaperList((prev) =>
+                              prev.filter((p) => p.id !== paper.id)
+                            )
+                            setUploadMessages((prev) =>
+                              prev.filter((msg) => !msg.includes(paper.name))
+                            )
+                          } catch (error) {
+                            console.error(error)
+                            alert("Failed to remove paper.")
+                          }
                         }}
                         className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition duration-300 whitespace-nowrap"
                       >

@@ -8,7 +8,13 @@ from rag_pipeline import (
     ask_question,
     compare_papers,
     generate_research_ideas,
-    recommend_related_papers
+    recommend_related_papers,
+    rebuild_vectorstore
+)
+
+from paper_manager import (
+    register_uploaded_paper,
+    remove_uploaded_paper,
 )
 
 app = FastAPI()
@@ -39,6 +45,8 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    register_uploaded_paper(file.filename, file_path)
 
     total_chunks = process_pdf(file_path)
 
@@ -84,4 +92,19 @@ def recommend():
 
     return {
         "papers": result
+    }
+
+@app.delete("/paper/{paper_name}")
+def delete_paper(paper_name: str):
+
+    removed = remove_uploaded_paper(paper_name)
+
+    if removed:
+        rebuild_vectorstore()
+        return {
+            "message": f"{paper_name} removed successfully."
+        }
+
+    return {
+        "message": "Paper not found."
     }

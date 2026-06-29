@@ -2,70 +2,101 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
-
 from groq import Groq
 from dotenv import load_dotenv
-
+from paper_manager import (
+    get_uploaded_papers
+)
 import os
-
 load_dotenv()
-
 client = Groq(
     api_key=os.getenv("GROQ_API_KEY")
 )
-
 embedding_model = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
+# --------------------------------------------------------
 
-paper_counter = 0
+# Build Vector Store
 
+# --------------------------------------------------------
 
-def process_pdf(pdf_path):
+def rebuild_vectorstore():
 
-    global paper_counter
+    papers = get_uploaded_papers()
 
-    paper_counter += 1
-    paper_id = paper_counter
-
-    loader = PyPDFLoader(pdf_path)
-    documents = loader.load()
+    documents = []
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=250
     )
 
-    chunks = splitter.split_documents(documents)
+    valid_papers = []
 
-    for chunk in chunks:
-        chunk.metadata["source"] = pdf_path
-        chunk.metadata["paper_id"] = paper_id
+    for paper in papers:
 
-    new_vectorstore = FAISS.from_documents(
-        chunks,
+        # Skip papers that no longer exist
+        if not os.path.exists(paper["path"]):
+            continue
+
+        valid_papers.append(paper)
+
+        loader = PyPDFLoader(
+            paper["path"]
+        )
+
+        pdf_docs = loader.load()
+
+        chunks = splitter.split_documents(
+            pdf_docs
+        )
+
+        for chunk in chunks:
+
+            chunk.metadata["paper_id"] = paper["paper_id"]
+            chunk.metadata["source"] = paper["name"]
+
+        documents.extend(chunks)
+
+    # No papers left
+    if not documents:
+
+        if os.path.exists("vectorstore/index.faiss"):
+            os.remove("vectorstore/index.faiss")
+
+        if os.path.exists("vectorstore/index.pkl"):
+            os.remove("vectorstore/index.pkl")
+
+        return
+
+    vectorstore = FAISS.from_documents(
+        documents,
         embedding_model
     )
 
-    if os.path.exists("vectorstore/index.faiss"):
+    vectorstore.save_local(
+        "vectorstore"
+    )
+# --------------------------------------------------------
 
-        old_vectorstore = FAISS.load_local(
-            "vectorstore",
-            embedding_model,
-            allow_dangerous_deserialization=True
-        )
+# Upload Paper
 
-        old_vectorstore.merge_from(new_vectorstore)
+# --------------------------------------------------------
 
-        old_vectorstore.save_local("vectorstore")
-
-    else:
-
-        new_vectorstore.save_local("vectorstore")
-
-    return len(chunks)
-
-
+def process_pdf(pdf_path):
+    # Rebuild the vector database using
+    # all currently registered papers
+    rebuild_vectorstore()
+    if not os.path.exists("vectorstore/index.faiss"):
+        return 0
+    vectorstore = FAISS.load_local(
+        "vectorstore",
+        embedding_model,
+        allow_dangerous_deserialization=True
+    )
+    return vectorstore.index.ntotal
+    
 def ask_question(question):
 
     if not os.path.exists("vectorstore/index.faiss"):
@@ -91,7 +122,7 @@ def ask_question(question):
             requested_paper = int(
                 paper_match.group(1)
             )
-/≥
+
             docs = vectorstore.similarity_search(
                 "",
                 k=100
