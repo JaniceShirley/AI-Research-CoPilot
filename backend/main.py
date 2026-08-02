@@ -15,6 +15,9 @@ from rag_pipeline import (
 from paper_manager import (
     register_uploaded_paper,
     remove_uploaded_paper,
+    get_uploaded_papers,
+    BASE_DIR,
+    UPLOAD_DIR
 )
 
 app = FastAPI()
@@ -27,40 +30,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_FOLDER = "uploads"
+UPLOAD_FOLDER = UPLOAD_DIR
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 @app.get("/")
 def home():
     return {"message": "AI Research Backend Running 🚀"}
 
 
+@app.get("/papers")
+def list_papers():
+    return {
+        "papers": get_uploaded_papers()
+    }
+
+
 @app.post("/upload")
-
 async def upload_pdf(file: UploadFile = File(...)):
-
-    file_path = os.path.join(
-        UPLOAD_FOLDER,
-        file.filename
-    )
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    register_uploaded_paper(file.filename, file_path)
+    paper_entry = register_uploaded_paper(file.filename, file_path)
 
     total_chunks = process_pdf(file_path)
 
     return {
         "message": f"✅ {file.filename} processed successfully • {total_chunks} chunks created",
-        "chunks": total_chunks
+        "chunks": total_chunks,
+        "paper": paper_entry,
+        "papers": get_uploaded_papers()
     }
 
 
 @app.get("/ask")
 def ask(question: str):
-
     answer = ask_question(question)
-
     return {
         "answer": answer
     }
@@ -68,18 +76,15 @@ def ask(question: str):
 
 @app.get("/compare")
 def compare():
-
     result = compare_papers()
-
     return {
         "comparison": result
     }
 
+
 @app.get("/ideas")
 def ideas():
-
     result = generate_research_ideas()
-
     return {
         "ideas": result
     }
@@ -87,24 +92,24 @@ def ideas():
 
 @app.get("/recommend")
 def recommend():
-
     result = recommend_related_papers()
-
     return {
         "papers": result
     }
 
+
 @app.delete("/paper/{paper_name}")
 def delete_paper(paper_name: str):
-
     removed = remove_uploaded_paper(paper_name)
 
     if removed:
         rebuild_vectorstore()
         return {
-            "message": f"{paper_name} removed successfully."
+            "message": f"{paper_name} removed successfully.",
+            "papers": get_uploaded_papers()
         }
 
     return {
-        "message": "Paper not found."
+        "message": "Paper not found.",
+        "papers": get_uploaded_papers()
     }
