@@ -1,3 +1,40 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom wrapping rules to prevent long filenames/URLs from overflowing
+   Applied to markdown (prose) and common text containers used across the app.
+*/
+.prose,
+.prose p,
+.prose li,
+.prose td,
+.prose th,
+.prose code,
+.prose pre,
+.text-slate-300,
+.text-slate-200,
+.text-slate-400,
+.text-cyan-400,
+.text-cyan-300 {
+  white-space: normal;
+  overflow-wrap: anywhere; /* allow breaking at sensible points for long tokens */
+  word-break: break-word;   /* fallback */
+}
+
+/* Ensure flex children can shrink inside flex rows/columns */
+.flex-1,
+.min-w-0 {
+  min-width: 0;
+}
+
+/* More aggressive break for very long tokens (use sparingly) */
+.break-anywhere {
+  word-break: break-all;
+}
+
+/* Small accessibility tweak for readability */
+.prose p,
+.prose li {
+  line-height: 1.6;
+}

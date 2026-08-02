@@ -1,3 +1,4 @@
+import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -5,26 +6,30 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from groq import Groq
 from dotenv import load_dotenv
 from paper_manager import (
-    get_uploaded_papers
+    get_uploaded_papers,
+    resolve_paper_path,
+    BASE_DIR
 )
-import os
+
 load_dotenv()
+
 client = Groq(
     api_key=os.getenv("GROQ_API_KEY")
 )
+
 embedding_model = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
+
+VECTORSTORE_DIR = os.path.join(BASE_DIR, "vectorstore")
+INDEX_FAISS_PATH = os.path.join(VECTORSTORE_DIR, "index.faiss")
+
 # --------------------------------------------------------
-
 # Build Vector Store
-
 # --------------------------------------------------------
 
 def rebuild_vectorstore():
-
     papers = get_uploaded_papers()
-
     documents = []
 
     splitter = RecursiveCharacterTextSplitter(
@@ -32,42 +37,39 @@ def rebuild_vectorstore():
         chunk_overlap=250
     )
 
-    valid_papers = []
-
     for paper in papers:
+        abs_path = resolve_paper_path(paper["path"])
 
         # Skip papers that no longer exist
-        if not os.path.exists(paper["path"]):
+        if not os.path.exists(abs_path):
             continue
 
-        valid_papers.append(paper)
+        try:
+            loader = PyPDFLoader(abs_path)
+            pdf_docs = loader.load()
+            chunks = splitter.split_documents(pdf_docs)
 
-        loader = PyPDFLoader(
-            paper["path"]
-        )
+            for chunk in chunks:
+                chunk.metadata["paper_id"] = paper["paper_id"]
+                chunk.metadata["source"] = paper["name"]
 
-        pdf_docs = loader.load()
+            documents.extend(chunks)
+        except Exception as e:
+            print(f"Error reading PDF {abs_path}: {e}")
 
-        chunks = splitter.split_documents(
-            pdf_docs
-        )
-
-        for chunk in chunks:
-
-            chunk.metadata["paper_id"] = paper["paper_id"]
-            chunk.metadata["source"] = paper["name"]
-
-        documents.extend(chunks)
-
-    # No papers left
+    # If no valid documents/papers remain
     if not documents:
-
-        if os.path.exists("vectorstore/index.faiss"):
-            os.remove("vectorstore/index.faiss")
-
-        if os.path.exists("vectorstore/index.pkl"):
-            os.remove("vectorstore/index.pkl")
-
+        if os.path.exists(INDEX_FAISS_PATH):
+            try:
+                os.remove(INDEX_FAISS_PATH)
+            except OSError:
+                pass
+        pkl_path = os.path.join(VECTORSTORE_DIR, "index.pkl")
+        if os.path.exists(pkl_path):
+            try:
+                os.remove(pkl_path)
+            except OSError:
+                pass
         return
 
     vectorstore = FAISS.from_documents(
@@ -75,40 +77,34 @@ def rebuild_vectorstore():
         embedding_model
     )
 
-    vectorstore.save_local(
-        "vectorstore"
-    )
+    vectorstore.save_local(VECTORSTORE_DIR)
+
 # --------------------------------------------------------
-
 # Upload Paper
-
 # --------------------------------------------------------
 
 def process_pdf(pdf_path):
-    # Rebuild the vector database using
-    # all currently registered papers
     rebuild_vectorstore()
-    if not os.path.exists("vectorstore/index.faiss"):
+    if not os.path.exists(INDEX_FAISS_PATH):
         return 0
     vectorstore = FAISS.load_local(
-        "vectorstore",
+        VECTORSTORE_DIR,
         embedding_model,
         allow_dangerous_deserialization=True
     )
     return vectorstore.index.ntotal
-    
-def ask_question(question):
 
-    if not os.path.exists("vectorstore/index.faiss"):
+def ask_question(question):
+    if not os.path.exists(INDEX_FAISS_PATH):
         return "No research papers uploaded yet."
 
     try:
-
         vectorstore = FAISS.load_local(
-            "vectorstore",
+            VECTORSTORE_DIR,
             embedding_model,
             allow_dangerous_deserialization=True
         )
+
 
         import re
 
@@ -160,25 +156,21 @@ def ask_question(question):
         prompt = f"""
 You are an advanced AI research assistant.
 
-Carefully analyze the provided research paper context and answer the user's question accurately.
+Carefully analyze the provided research paper context and generate a clean, highly structured, well-formatted technical response.
 
-Instructions:
-- Use information from the uploaded papers.
-- If multiple papers are involved, clearly mention which paper the answer comes from.
-- If the answer is incomplete in the retrieved context, say so explicitly.
-- Avoid vague statements.
-- Give structured technical explanations whenever possible.
-- For workflow/system questions, explain the pipeline step-by-step.
-- Use bullet points for clarity.
-- If relevant, compare methodologies, architectures, datasets, and applications.
+CRITICAL FORMATTING INSTRUCTIONS:
+- Do NOT output a single dense paragraph or wall of text.
+- Divide your response into distinct, organized sections using Markdown subheadings (e.g. `### 📌 Section Title`).
+- Present every key point or dataset feature as a bullet point (`- `) with bolded terms (`**Term Name**`).
+- Add blank lines between sections and bullet list items for clean visual spacing.
+- Clearly mention which paper the information comes from (e.g. `📘 **Source Paper:** ...`).
+- If details are incomplete in the context, explicitly state: `*Note: Specific details not provided in the context.*`
 
 Research Context:
 {context}
 
-Question:
+User Question:
 {question}
-
-Generate a clean, technical, research-style answer.
 """
 
         response = client.chat.completions.create(
@@ -200,13 +192,13 @@ Generate a clean, technical, research-style answer.
 
 def compare_papers():
 
-    if not os.path.exists("vectorstore/index.faiss"):
+    if not os.path.exists(INDEX_FAISS_PATH):
         return "No papers uploaded."
 
     try:
 
         vectorstore = FAISS.load_local(
-            "vectorstore",
+            VECTORSTORE_DIR,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -234,10 +226,17 @@ def compare_papers():
         prompt = f"""
 You are an advanced AI research analyst.
 
-Analyze and compare the uploaded research papers in a highly structured format.
+Analyze and compare the uploaded research papers. Generate a clean, highly structured, well-formatted response.
 
-Your comparison MUST include:
+CRITICAL FORMATTING INSTRUCTIONS:
+- Do NOT output a single dense paragraph or wall of text.
+- Divide your response into distinct, organized sections using Markdown subheadings (e.g. `### 📌 Section Title`).
+- Present every key point as a bullet point (`- `) with bolded terms (`**Term Name**`).
+- Add blank lines between sections and bullet list items for clean visual spacing.
+- Clearly mention which paper the information comes from (e.g. `📘 **Paper:** ...`).
+- If details are incomplete in the context, explicitly state: `*Note: Not explicitly mentioned in the paper.*`
 
+Your comparison MUST include these sections as `### 📌` headings:
 1. Research Objective
 2. Methodology Differences
 3. Workflow / System Architecture
@@ -256,12 +255,10 @@ Research Papers Context:
 
 Rules:
 - Give concise but technical answers.
-- Clearly separate Paper 1 and Paper 2.
-- Use bullet points whenever possible.
+- Clearly separate papers using `📘 **Paper Name**` labels.
+- Use bullet points (`- `) whenever possible.
 - Avoid repeating the same information.
-- If some information is missing, say "Not explicitly mentioned in the paper".
-- If no contradictions exist, explicitly say: "No significant contradictions found between the papers.".
-- Highlight conflicting claims only if they are technically meaningful.
+- If no contradictions exist, explicitly say: `*No significant contradictions found between the papers.*`
 
 Generate a professional research comparison report.
 """
@@ -285,13 +282,13 @@ Generate a professional research comparison report.
 
 def generate_research_ideas():
 
-    if not os.path.exists("vectorstore/index.faiss"):
+    if not os.path.exists(INDEX_FAISS_PATH):
         return "No papers uploaded."
 
     try:
 
         vectorstore = FAISS.load_local(
-            "vectorstore",
+            VECTORSTORE_DIR,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -321,6 +318,19 @@ You are an advanced AI research innovator.
 
 Using the uploaded research papers, generate novel and technically meaningful research ideas.
 
+CRITICAL FORMATTING INSTRUCTIONS:
+- Do NOT output a single dense paragraph or wall of text.
+- Structure each research idea as its own section with a Markdown subheading (e.g. `### 💡 Idea 1: Title Here`).
+- Within each idea, use these sub-sections with bold labels:
+  - **🔬 Problem Statement:** ...
+  - **🚀 Proposed Innovation:** ...
+  - **🛠️ Possible Tech Stack:** ...
+  - **✅ Expected Advantages:** ...
+  - **🌍 Real-world Applications:** ...
+- Present every key point as a bullet point (`- `) with bolded terms (`**Term Name**`).
+- Add blank lines between sections for clean visual spacing.
+- Reference the source papers using `📘 **Paper:** ...` where relevant.
+
 Focus on:
 - hybrid AI systems
 - unexplored improvements
@@ -331,14 +341,6 @@ Focus on:
 
 Research Context:
 {context}
-
-Generate:
-1. Research Idea Title
-2. Problem Statement
-3. Proposed Innovation
-4. Possible Tech Stack
-5. Expected Advantages
-6. Real-world Applications
 
 Generate at least 3 strong research ideas.
 """
@@ -363,7 +365,7 @@ Generate at least 3 strong research ideas.
 # New function: recommend_related_papers
 def recommend_related_papers():
 
-    if not os.path.exists("vectorstore/index.faiss"):
+    if not os.path.exists(INDEX_FAISS_PATH):
         return [
             {
                 "title": "No papers uploaded",
@@ -375,7 +377,7 @@ def recommend_related_papers():
     try:
 
         vectorstore = FAISS.load_local(
-            "vectorstore",
+            VECTORSTORE_DIR,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -401,19 +403,20 @@ You are a research discovery assistant.
 
 Analyze the uploaded research papers and recommend 5 closely related research papers.
 
-For each recommendation provide:
-- Title
-- Why it is relevant
-- A short search phrase
-
-Return the response exactly in this format:
-
-Title: <paper title>
-Reason: <why relevant>
-Search: <search phrase>
+CRITICAL FORMATTING INSTRUCTIONS:
+- Do NOT output a single dense paragraph or wall of text.
+- Structure each recommendation as its own section with a Markdown subheading (e.g. `### 📄 Recommendation 1`).
+- Within each recommendation, use these bold labels on separate lines:
+  - **📌 Title:** ...
+  - **🔗 Why It's Relevant:** ...
+  - **🔍 Search Phrase:** ...
+- Add blank lines between recommendations for clean visual spacing.
+- Reference the source papers from the context using `📘 **Related to:**` where relevant.
 
 Research Context:
 {context}
+
+Generate exactly 5 recommendations.
 """
 
         response = client.chat.completions.create(
