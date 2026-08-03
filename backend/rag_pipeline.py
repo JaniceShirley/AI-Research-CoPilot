@@ -105,33 +105,141 @@ def ask_question(question):
             allow_dangerous_deserialization=True
         )
 
-
         import re
 
-        paper_match = re.search(
-            r"paper\s+(\d+)",
-            question.lower()
-        )
+        question_lower = question.lower()
 
+        # Detect explicit paper reference like "paper 2"
+        paper_match = re.search(r"paper\s+(\d+)", question_lower)
+
+        # Keywords indicating metadata-oriented questions
+        metadata_keywords = [
+            "author", "authors", "writer", "written by",
+            "title", "affiliation", "institution", "publication",
+            "journal", "conference", "doi", "year"
+        ]
+
+        is_metadata_question = any(k in question_lower for k in metadata_keywords)
+
+        # Fetch uploaded papers list to allow safe paper selection
+        papers = get_uploaded_papers()
+
+        selected_paper = None
         if paper_match:
+            requested_paper = int(paper_match.group(1))
+            for p in papers:
+                if p.get("paper_id") == requested_paper:
+                    selected_paper = p
+                    break
 
-            requested_paper = int(
-                paper_match.group(1)
+        # If it's a metadata-style question, prioritise first-page context
+        if is_metadata_question:
+            # Determine target papers
+            if selected_paper:
+                target_papers = [selected_paper]
+                ambiguous = False
+            else:
+                if len(papers) == 1:
+                    target_papers = papers
+                    ambiguous = False
+                else:
+                    # Multiple papers uploaded and user didn't specify — mark ambiguous
+                    target_papers = papers
+                    ambiguous = True
+
+            # Collect first-page text for each target paper (fail gracefully if none)
+            metadata_contexts = []
+            for paper in target_papers:
+                abs_path = resolve_paper_path(paper["path"])
+                first_page_text = ""
+                try:
+                    loader = PyPDFLoader(abs_path)
+                    pdf_docs = loader.load()
+                    if pdf_docs and len(pdf_docs) >= 1:
+                        first_page_text = pdf_docs[0].page_content or ""
+                except Exception:
+                    first_page_text = ""
+
+                if first_page_text and first_page_text.strip():
+                    metadata_contexts.append({
+                        "paper": paper,
+                        "first_page": first_page_text.strip()
+                    })
+
+            if not metadata_contexts:
+                return "No extractable first-page text found for the uploaded paper(s); cannot determine metadata reliably."
+
+            # Build a combined context that places first-page metadata at the top
+            context = ""
+            for item in metadata_contexts:
+                paper = item["paper"]
+                context += f"\n\n===== PAPER: {paper['name']} (page 1 metadata) =====\n"
+                context += item["first_page"] + "\n"
+
+            # Also include a small set of semantically relevant content chunks to supplement metadata
+            retriever = vectorstore.as_retriever(
+                search_type="mmr",
+                search_kwargs={
+                    "k": 6,
+                    "fetch_k": 12
+                }
             )
 
-            docs = vectorstore.similarity_search(
-                "",
-                k=100
+            try:
+                supplementary_docs = retriever.invoke(question)
+            except Exception:
+                supplementary_docs = []
+
+            used_sources = set()
+            for doc in supplementary_docs:
+                src = doc.metadata.get("source", "Unknown")
+                if src not in used_sources:
+                    context += f"\n\n===== {src} =====\n"
+                    used_sources.add(src)
+                context += doc.page_content + "\n"
+
+            # If ambiguous (multiple papers and user didn't pick), instruct the LLM to list authors per paper
+            if ambiguous:
+                clarification_note = (
+                    "Note: Multiple papers are uploaded and the question did not identify a specific paper.\n"
+                    "Please list authors and affiliations for each uploaded paper separately, and do NOT attribute authors to the wrong paper.\n"
+                )
+            else:
+                clarification_note = ""
+
+            prompt = f"""
+You are an advanced AI research assistant focused on extracting factual paper metadata when available.
+
+Important:
+- Use ONLY the provided paper context. Do NOT invent or hallucinate author names or affiliations.
+- If a paper's first page is image-only or missing text, state that you could not extract metadata instead of guessing.
+- If multiple papers are present and the user did not specify which one, list each paper separately and indicate the paper source for every metadata item.
+
+{clarification_note}
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:
+"""
+
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
             )
 
-            docs = [
-                doc for doc in docs
-                if doc.metadata.get("paper_id")
-                == requested_paper
-            ]
+            return response.choices[0].message.content
 
+        # Non-metadata / normal content questions: use existing retrieval flow
+        if selected_paper:
+            # If user asked about a specific paper, prefer chunks from that paper
+            docs = vectorstore.similarity_search("", k=100)
+            docs = [doc for doc in docs if doc.metadata.get("paper_id") == selected_paper.get("paper_id")]
         else:
-
             retriever = vectorstore.as_retriever(
                 search_type="mmr",
                 search_kwargs={
@@ -139,19 +247,15 @@ def ask_question(question):
                     "fetch_k": 20
                 }
             )
-
             docs = retriever.invoke(question)
 
         if not docs:
             return "No relevant content found in uploaded papers."
 
-        context = "\n\n".join(
-            [
-                f"Source: {doc.metadata.get('source', 'Unknown')}\n"
-                f"Content: {doc.page_content}"
-                for doc in docs
-            ]
-        )
+        context = "\n\n".join([
+            f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}"
+            for doc in docs
+        ])
 
         prompt = f"""
 You are an advanced AI research assistant.
