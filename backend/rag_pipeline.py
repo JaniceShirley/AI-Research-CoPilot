@@ -113,10 +113,13 @@ def ask_question(question):
             - 'PAPER_CONTENT'
             - 'CONVERSATIONAL'
             - 'OUT_OF_SCOPE'
+            - 'POTENTIAL_CONTENT' (needs relevance gating)
 
-            The classifier prefers PAPER_CONTENT for ambiguous cases so that
-            questions that likely refer to the uploaded papers are not
-            accidentally classified as out-of-scope.
+            The classifier only marks obvious conversational, metadata, or
+            explicit content queries. Ambiguous/unknown queries are returned
+            as 'POTENTIAL_CONTENT' so they can be checked against the FAISS
+            index for actual relevance before being routed to PAPER_CONTENT
+            or OUT_OF_SCOPE.
             """
             s = (q or "").lower().strip()
 
@@ -154,7 +157,7 @@ def ask_question(question):
             if any(k in s for k in out_of_scope_keywords) and "paper" not in s and not any(k in s for k in metadata_keywords):
                 return "OUT_OF_SCOPE"
 
-            # Content keywords (paper content / technical questions)
+            # Explicit content keywords (clearly paper-related technical questions)
             content_keywords = [
                 "method", "methodology", "dataset", "datasets", "results", "limitations",
                 "conclusion", "conclusions", "architecture", "model", "models", "algorithm",
@@ -166,16 +169,16 @@ def ask_question(question):
             if any(k in s for k in content_keywords):
                 return "PAPER_CONTENT"
 
-            # If user references a paper explicitly (paper 1, paper 2), treat as content unless it's metadata
+            # If user references a paper explicitly (paper 1, paper 2), treat as content
             if re.search(r"paper\s+\d+", s):
                 return "PAPER_CONTENT"
 
-            # Pronoun-based heuristic: short questions that use "they/this/that/these/it" often refer to the loaded papers
+            # Pronoun-based heuristic: short questions that use "they/this/that/these/it" may refer to the papers
             if re.search(r"\b(they|this|that|these|it|its|we)\b", s):
-                return "PAPER_CONTENT"
+                return "POTENTIAL_CONTENT"
 
-            # Default: favor PAPER_CONTENT (conservative: avoid marking as out-of-scope)
-            return "PAPER_CONTENT"
+            # For ambiguous/unknown queries, don't assume PAPER_CONTENT — use the relevance gate
+            return "POTENTIAL_CONTENT"
 
         question_lower = question.lower()
 
@@ -195,6 +198,7 @@ def ask_question(question):
 
         # Classify the incoming question to decide routing
         route = classify_query(question)
+        print(f"Query route: {route}")
 
         # Handle conversational and out-of-scope locally without querying FAISS
         if route == "CONVERSATIONAL":
@@ -210,7 +214,7 @@ def ask_question(question):
         if route == "OUT_OF_SCOPE":
             return "That question isn't related to the uploaded research papers. I can help you analyze, summarize, compare, or discuss your uploaded papers."
 
-        # From here on, the question is either PAPER_METADATA or PAPER_CONTENT and requires the vectorstore
+        # From here on, the question may require the vectorstore (PAPER_METADATA, PAPER_CONTENT, or POTENTIAL_CONTENT)
         if not os.path.exists(INDEX_FAISS_PATH):
             return "No research papers uploaded yet."
 
@@ -220,7 +224,7 @@ def ask_question(question):
             allow_dangerous_deserialization=True
         )
 
-        # If it's a metadata-style question, prioritise first-page context
+        # PAPER_METADATA: existing metadata logic (unchanged)
         if route == "PAPER_METADATA":
             # Determine target papers
             if selected_paper:
@@ -322,20 +326,100 @@ Answer:
 
             return response.choices[0].message.content
 
-        # PAPER_CONTENT: Non-metadata / normal content questions: use existing retrieval flow
-        if selected_paper:
-            # If user asked about a specific paper, prefer chunks from that paper
-            docs = vectorstore.similarity_search("", k=100)
-            docs = [doc for doc in docs if doc.metadata.get("paper_id") == selected_paper.get("paper_id")]
-        else:
-            retriever = vectorstore.as_retriever(
-                search_type="mmr",
-                search_kwargs={
-                    "k": 12,
-                    "fetch_k": 20
-                }
-            )
-            docs = retriever.invoke(question)
+        # For routes that require evaluating content relevance (PAPER_CONTENT or POTENTIAL_CONTENT)
+        # Implement a retrieval relevance gate using FAISS scores before constructing the final prompt.
+        def relevance_gate(query, selected_paper=None, top_k=6, score_k=10):
+            """Return (is_relevant: bool, top_docs: list, best_score: float)
+
+            Uses vectorstore.similarity_search_with_score if available and falls back
+            to retrieving candidate docs. Interprets score semantics heuristically:
+            - If score values appear to be distances (max_score > 1.5), lower is better.
+              Use DISTANCE_THRESHOLD (lower => more similar).
+            - Otherwise treat scores as similarity (higher is better) and use SIMILARITY_THRESHOLD.
+
+            Thresholds are chosen conservatively: require good evidence of relevance
+            (median of top-3 within threshold) before declaring relevant.
+            """
+            try:
+                results = vectorstore.similarity_search_with_score(query, k=score_k)
+                # results is a list of (Document, score)
+            except Exception:
+                # Fall back to MMR retriever if method unavailable
+                retr = vectorstore.as_retriever(search_type="mmr", search_kwargs={"k": top_k, "fetch_k": score_k})
+                try:
+                    candidates = retr.invoke(query)
+                    # emulate scores by asking vectorstore to compute distances for these docs is difficult here
+                    # treat as relevant conservatively
+                    return True, candidates[:top_k], None
+                except Exception:
+                    return False, [], None
+
+            if not results:
+                return False, [], None
+
+            # Optionally filter results to the selected_paper if provided
+            if selected_paper is not None:
+                paper_id = selected_paper.get("paper_id")
+                results = [(doc, score) for doc, score in results if doc.metadata.get("paper_id") == paper_id]
+                if not results:
+                    # No candidates from the specified paper
+                    return False, [], None
+
+            # Sort by score ascending (assume lower better) but we'll detect semantics
+            results_sorted = sorted(results, key=lambda x: x[1])
+            scores = [s for _, s in results_sorted]
+
+            best_score = scores[0]
+            # Inspect score range to guess semantics
+            max_score = max(scores)
+            min_score = min(scores)
+
+            # Heuristics to decide if score is distance (lower better) or similarity (higher better)
+            if max_score > 1.5:
+                # Treat as distance (lower better)
+                DISTANCE_THRESHOLD = 0.9
+                # take median of top-3
+                top3 = scores[:3]
+                median_top3 = sorted(top3)[len(top3)//2]
+                is_relevant = median_top3 <= DISTANCE_THRESHOLD
+                print(f"Best relevance (distance) = {best_score}, median_top3={median_top3}, threshold={DISTANCE_THRESHOLD}")
+                top_docs = [d for d, _ in results_sorted[:top_k]]
+                return is_relevant, top_docs, best_score
+            else:
+                # Treat as similarity (higher better)
+                SIMILARITY_THRESHOLD = 0.20
+                # take median of top-3 (largest scores)
+                top3 = scores[-3:]
+                median_top3 = sorted(top3)[len(top3)//2]
+                is_relevant = median_top3 >= SIMILARITY_THRESHOLD
+                print(f"Best relevance (similarity) = {best_score}, median_top3={median_top3}, threshold={SIMILARITY_THRESHOLD}")
+                # get corresponding docs for top similarity
+                results_by_sim = sorted(results, key=lambda x: x[1], reverse=True)
+                top_docs = [d for d, _ in results_by_sim[:top_k]]
+                return is_relevant, top_docs, best_score
+
+        # Decide path for POTENTIAL_CONTENT: do a relevance gate
+        if route == "POTENTIAL_CONTENT":
+            is_relevant, candidate_docs, best_score = relevance_gate(question, selected_paper=selected_paper, top_k=6, score_k=20)
+            print(f"Query route after gate: {'PAPER_CONTENT' if is_relevant else 'OUT_OF_SCOPE'}; Best score: {best_score}")
+            if not is_relevant:
+                return "That question doesn't appear to be related to the uploaded research papers. Please ask a question about the paper."
+            # proceed with PAPER_CONTENT flow using candidate_docs
+            docs = candidate_docs
+        elif route == "PAPER_CONTENT":
+            # Explicit content queries: retrieve as before
+            if selected_paper:
+                docs = vectorstore.similarity_search("", k=100)
+                docs = [doc for doc in docs if doc.metadata.get("paper_id") == selected_paper.get("paper_id")]
+            else:
+                retriever = vectorstore.as_retriever(
+                    search_type="mmr",
+                    search_kwargs={
+                        "k": 12,
+                        "fetch_k": 20
+                    }
+                )
+                docs = retriever.invoke(question)
 
         if not docs:
             return "No relevant content found in uploaded papers."
