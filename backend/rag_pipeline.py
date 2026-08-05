@@ -107,19 +107,80 @@ def ask_question(question):
 
         import re
 
+        def classify_query(q: str):
+            """Deterministic lightweight classifier that routes queries into:
+            - 'PAPER_METADATA'
+            - 'PAPER_CONTENT'
+            - 'CONVERSATIONAL'
+            - 'OUT_OF_SCOPE'
+
+            The classifier prefers PAPER_CONTENT for ambiguous cases so that
+            questions that likely refer to the uploaded papers are not
+            accidentally classified as out-of-scope.
+            """
+            s = (q or "").lower().strip()
+
+            # Simple conversational patterns (greetings / assistant identity)
+            conv_exact = [
+                "hi", "hello", "hey", "hey there",
+                "are you human", "are you a human", "who are you",
+                "what can you do", "what is your name", "who am i",
+                "how are you"
+            ]
+            for p in conv_exact:
+                if s == p or s.startswith(p + " ") or s.startswith(p + "?"):
+                    return "CONVERSATIONAL"
+
+            if re.search(r"\b(hi|hello|hey)\b", s):
+                return "CONVERSATIONAL"
+            if re.search(r"\bare you\b.*\bhuman\b", s) or re.search(r"\bwho are you\b", s):
+                return "CONVERSATIONAL"
+
+            # Metadata keywords (explicit)
+            metadata_keywords = [
+                "author", "authors", "writer", "written by",
+                "title", "affiliation", "institution", "publication",
+                "journal", "conference", "doi", "year"
+            ]
+            if any(k in s for k in metadata_keywords):
+                return "PAPER_METADATA"
+
+            # Strong out-of-scope indicators (common general-knowledge questions)
+            out_of_scope_keywords = [
+                "capital of", "currency", "population", "president", "prime minister",
+                "how to cook", "recipe", "what is the capital", "how far", "distance",
+            ]
+            # Only treat as OUT_OF_SCOPE if there's no hint it's about uploaded papers
+            if any(k in s for k in out_of_scope_keywords) and "paper" not in s and not any(k in s for k in metadata_keywords):
+                return "OUT_OF_SCOPE"
+
+            # Content keywords (paper content / technical questions)
+            content_keywords = [
+                "method", "methodology", "dataset", "datasets", "results", "limitations",
+                "conclusion", "conclusions", "architecture", "model", "models", "algorithm",
+                "training", "evaluate", "evaluation", "experiment", "experiments", "approach",
+                "why did they", "why did they use", "why did they choose", "what could be improved",
+                "explain this", "what does paper", "summarize", "interpret", "compare", "comparison",
+                "what does paper", "what does paper 2 say"
+            ]
+            if any(k in s for k in content_keywords):
+                return "PAPER_CONTENT"
+
+            # If user references a paper explicitly (paper 1, paper 2), treat as content unless it's metadata
+            if re.search(r"paper\s+\d+", s):
+                return "PAPER_CONTENT"
+
+            # Pronoun-based heuristic: short questions that use "they/this/that/these/it" often refer to the loaded papers
+            if re.search(r"\b(they|this|that|these|it|its|we)\b", s):
+                return "PAPER_CONTENT"
+
+            # Default: favor PAPER_CONTENT (conservative: avoid marking as out-of-scope)
+            return "PAPER_CONTENT"
+
         question_lower = question.lower()
 
         # Detect explicit paper reference like "paper 2"
         paper_match = re.search(r"paper\s+(\d+)", question_lower)
-
-        # Keywords indicating metadata-oriented questions
-        metadata_keywords = [
-            "author", "authors", "writer", "written by",
-            "title", "affiliation", "institution", "publication",
-            "journal", "conference", "doi", "year"
-        ]
-
-        is_metadata_question = any(k in question_lower for k in metadata_keywords)
 
         # Fetch uploaded papers list to allow safe paper selection
         papers = get_uploaded_papers()
@@ -132,8 +193,35 @@ def ask_question(question):
                     selected_paper = p
                     break
 
+        # Classify the incoming question to decide routing
+        route = classify_query(question)
+
+        # Handle conversational and out-of-scope locally without querying FAISS
+        if route == "CONVERSATIONAL":
+            # Short, friendly assistant replies for conversational prompts
+            if re.search(r"\bare you\b.*\bhuman\b", question_lower) or re.search(r"\bare you a human\b", question_lower):
+                return "No, I'm an AI Research CoPilot designed to help you analyze and understand research papers."
+            if re.search(r"\bwho are you\b", question_lower):
+                return "I'm an AI Research CoPilot — I help you extract, summarize, and analyze uploaded research papers."
+            if re.search(r"\bhi\b|\bhello\b|\bhey\b", question_lower):
+                return "Hello — I'm an AI Research CoPilot. Upload papers and ask me about their metadata or content."
+            return "I'm an AI Research CoPilot. I can help analyze uploaded research papers, extract metadata, compare papers, and generate ideas."
+
+        if route == "OUT_OF_SCOPE":
+            return "That question isn't related to the uploaded research papers. I can help you analyze, summarize, compare, or discuss your uploaded papers."
+
+        # From here on, the question is either PAPER_METADATA or PAPER_CONTENT and requires the vectorstore
+        if not os.path.exists(INDEX_FAISS_PATH):
+            return "No research papers uploaded yet."
+
+        vectorstore = FAISS.load_local(
+            VECTORSTORE_DIR,
+            embedding_model,
+            allow_dangerous_deserialization=True
+        )
+
         # If it's a metadata-style question, prioritise first-page context
-        if is_metadata_question:
+        if route == "PAPER_METADATA":
             # Determine target papers
             if selected_paper:
                 target_papers = [selected_paper]
@@ -234,7 +322,7 @@ Answer:
 
             return response.choices[0].message.content
 
-        # Non-metadata / normal content questions: use existing retrieval flow
+        # PAPER_CONTENT: Non-metadata / normal content questions: use existing retrieval flow
         if selected_paper:
             # If user asked about a specific paper, prefer chunks from that paper
             docs = vectorstore.similarity_search("", k=100)
