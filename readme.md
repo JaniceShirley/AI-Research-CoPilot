@@ -68,17 +68,17 @@ npm run dev
 - Frontend: `http://localhost:5173`
 - Backend docs: `http://127.0.0.1:8000/docs`
 
-## 💡 Notes
+## Notes
 - Do not check `.env` into version control.
 - The backend currently requires `GROQ_API_KEY` at runtime.
 - `app.py` is an older Streamlit prototype and is not the main application surface today.
 - PDF files are stored under `backend/uploads` when uploaded through the app.
 
-## 🧪 Recommended workflow
+## Recommended workflow
 1. Start backend and frontend.
 2. Upload one or more PDFs.
 3. Ask metadata or paper-content questions.
 4. Use the debug logs in the backend terminal to verify query routing when needed.
 
-## 📝 License
+## License
 MIT License
