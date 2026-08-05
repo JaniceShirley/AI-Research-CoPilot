@@ -1,4 +1,4 @@
-# 🧠 AI Research Co-Pilot
+# AI Research Co-Pilot
 
 AI Research Co-Pilot is a research assistant that lets you upload academic papers, index their content, and ask questions using a RAG (Retrieval-Augmented Generation) workflow.
 
@@ -6,7 +6,7 @@ This repository combines:
 - a Python backend for PDF processing, vector indexing, and LLM orchestration
 - a React + Vite frontend for a chat-style research assistant interface
 
-## 🚀 Features
+## Features
 - Upload PDF research papers
 - Extract and chunk paper text for semantic indexing
 - Build FAISS vector search over uploaded papers
@@ -14,7 +14,7 @@ This repository combines:
 - Route conversational, metadata, and paper-content questions correctly
 - Support multi-paper uploads, comparison, and recommendations
 
-## 🛠️ Tech Stack
+## Tech Stack
 - Python
 - FastAPI
 - Vite + React
@@ -23,14 +23,14 @@ This repository combines:
 - Sentence Transformers embeddings
 - Groq / Llama for chat completions
 
-## 📁 Repository layout
+## Repository layout
 - `backend/` — FastAPI backend, PDF processing, vector indexing, retrieval logic
 - `frontend/` — React/Vite UI
 - `requirements.txt` — Python dependencies
 - `frontend/package.json` — frontend dependencies
 - `app.py` — legacy Streamlit prototype (not the current web app)
 
-## ⚙️ Local setup
+## Local setup
 ### 1. Install Python dependencies
 ```bash
 python3 -m pip install -r requirements.txt
