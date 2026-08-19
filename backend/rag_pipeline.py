@@ -1,4 +1,6 @@
 import os
+import requests
+import time
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -12,6 +14,8 @@ from paper_manager import (
 )
 
 load_dotenv()
+
+GROQ_MODEL = "groq/compound"
 
 client = Groq(
     api_key=os.getenv("GROQ_API_KEY")
@@ -283,7 +287,7 @@ def ask_question(question):
                 supplementary_docs = []
 
             used_sources = set()
-            for doc in supplementary_docs:
+            for doc in supplementary_docs[:6]:
                 src = doc.metadata.get("source", "Unknown")
                 if src not in used_sources:
                     context += f"\n\n===== {src} =====\n"
@@ -319,7 +323,7 @@ Answer:
 """
 
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=GROQ_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2
             )
@@ -426,7 +430,7 @@ Answer:
 
         context = "\n\n".join([
             f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}"
-            for doc in docs
+            for doc in docs[:6]
         ])
 
         prompt = f"""
@@ -450,7 +454,7 @@ User Question:
 """
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL,
             messages=[
                 {
                     "role": "user",
@@ -495,7 +499,7 @@ def compare_papers():
             [
                 f"Source: {doc.metadata.get('source', 'Unknown')}\n"
                 f"Content: {doc.page_content}"
-                for doc in docs
+                for doc in docs[:6]
             ]
         )
 
@@ -540,7 +544,7 @@ Generate a professional research comparison report.
 """
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL,
             messages=[
                 {
                     "role": "user",
@@ -585,7 +589,7 @@ def generate_research_ideas():
             [
                 f"Source: {doc.metadata.get('source', 'Unknown')}\n"
                 f"Content: {doc.page_content}"
-                for doc in docs
+                for doc in docs[:6]
             ]
         )
 
@@ -622,7 +626,7 @@ Generate at least 3 strong research ideas.
 """
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL,
             messages=[
                 {
                     "role": "user",
@@ -638,20 +642,22 @@ Generate at least 3 strong research ideas.
         return f"Idea Generation Error: {str(e)}"
 
 
-# New function: recommend_related_papers
+# New function: recommend_related_papers using real Semantic Scholar API
 def recommend_related_papers():
 
     if not os.path.exists(INDEX_FAISS_PATH):
         return [
             {
                 "title": "No papers uploaded",
-                "reason": "Upload papers first to get recommendations.",
+                "authors": "",
+                "year": "",
+                "venue": "",
+                "relevance": "Upload papers first to get recommendations.",
                 "url": ""
             }
         ]
 
     try:
-
         vectorstore = FAISS.load_local(
             VECTORSTORE_DIR,
             embedding_model,
@@ -667,60 +673,179 @@ def recommend_related_papers():
         )
 
         docs = retriever.invoke(
-            "research topic abstract methodology application domain"
+            "research topic title methodology abstract application domain keywords"
         )
 
-        context = "\n\n".join(
-            [doc.page_content for doc in docs]
-        )
+        context = "\n\n".join([doc.page_content for doc in docs[:6]])
 
-        prompt = f"""
-You are a research discovery assistant.
+        # 1. Extract concise 3-5 search terms using Groq
+        search_query = "smart parking system IoT license plate recognition"
+        try:
+            prompt = f"""
+Given the following excerpts from uploaded research paper(s), extract a concise 3 to 5 word search query suitable for searching related academic papers on Semantic Scholar.
+Focus on the main research topic, methodology, or application domain.
+Output ONLY the query keywords without punctuation or preamble.
 
-Analyze the uploaded research papers and recommend 5 closely related research papers.
-
-CRITICAL FORMATTING INSTRUCTIONS:
-- Do NOT output a single dense paragraph or wall of text.
-- Structure each recommendation as its own section with a Markdown subheading (e.g. `### 📄 Recommendation 1`).
-- Within each recommendation, use these bold labels on separate lines:
-  - **📌 Title:** ...
-  - **🔗 Why It's Relevant:** ...
-  - **🔍 Search Phrase:** ...
-- Add blank lines between recommendations for clean visual spacing.
-- Reference the source papers from the context using `📘 **Related to:**` where relevant.
-
-Research Context:
-{context}
-
-Generate exactly 5 recommendations.
+Excerpts:
+{context[:2000]}
 """
+            kw_response = client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+            extracted = kw_response.choices[0].message.content.strip().strip('"').strip("'")
+            if extracted and len(extracted) > 3:
+                search_query = extracted
+        except Exception as e:
+            print(f"Keyword extraction warning: {e}")
 
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
+        # 2. Search Semantic Scholar Graph API
+        ss_url = "https://api.semanticscholar.org/graph/v1/paper/search"
+        headers = {
+            "User-Agent": "AI-Research-CoPilot/1.0 (contact: research@example.com)"
+        }
+        api_key = os.getenv("SEMANTIC_SCHOLAR_API_KEY")
+        if api_key:
+            headers["x-api-key"] = api_key
+
+        params = {
+            "query": search_query,
+            "limit": 10,
+            "fields": "title,authors,year,venue,externalIds,url,abstract,publicationVenue,openAccessPdf"
+        }
+
+        resp = None
+        for attempt in range(2):
+            try:
+                resp = requests.get(ss_url, params=params, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    break
+                elif resp.status_code == 429 and attempt == 0:
+                    time.sleep(2)
+            except Exception as req_err:
+                print(f"Semantic Scholar request attempt {attempt} failed: {req_err}")
+
+        print(f"[SemanticScholar] Query sent: {search_query}")
+        print(f"[SemanticScholar] HTTP Status Code: {resp.status_code if resp else 'No Response'}")
+        if resp and resp.status_code != 200:
+            print(f"[SemanticScholar] Error Body: {resp.text[:300]}")
+
+        if not resp or resp.status_code != 200:
+            return [
                 {
-                    "role": "user",
-                    "content": prompt
+                    "error": "Unable to fetch related papers right now. Please try again.",
+                    "title": "Unable to fetch related papers right now. Please try again.",
+                    "authors": "",
+                    "year": "",
+                    "venue": "",
+                    "relevance": "Unable to fetch related papers right now. Please try again.",
+                    "reason": "Unable to fetch related papers right now. Please try again.",
+                    "url": ""
                 }
-            ],
-            temperature=0.5
-        )
+            ]
 
-        answer = response.choices[0].message.content
+        data = resp.json()
+        raw_papers = data.get("data", [])
+        print(f"[SemanticScholar] Results returned: {len(raw_papers)}")
+        if not raw_papers:
+            return []
 
-        return [
-            {
-                "title": "AI Recommended Papers",
-                "reason": answer,
-                "url": ""
-            }
-        ]
+        results = []
+        for p in raw_papers:
+            title = p.get("title")
+            if not title:
+                continue
+
+            # Authors
+            authors_list = p.get("authors") or []
+            if authors_list:
+                authors_str = ", ".join([a.get("name", "") for a in authors_list if a.get("name")])
+            else:
+                authors_str = "Unknown Authors"
+
+            # Year
+            year_val = p.get("year")
+            year_str = str(year_val) if year_val else "N/A"
+
+            # Venue / Journal
+            venue = p.get("venue")
+            if not venue and p.get("publicationVenue"):
+                pub_v = p.get("publicationVenue")
+                if isinstance(pub_v, dict):
+                    venue = pub_v.get("name")
+            if not venue:
+                venue = "Academic Venue"
+
+            # URL extraction logic
+            paper_url = p.get("url")
+            if not paper_url and p.get("openAccessPdf"):
+                pdf_info = p.get("openAccessPdf")
+                if isinstance(pdf_info, dict):
+                    paper_url = pdf_info.get("url")
+            if not paper_url and p.get("externalIds"):
+                ext = p.get("externalIds")
+                if isinstance(ext, dict):
+                    if "DOI" in ext:
+                        paper_url = f"https://doi.org/{ext['DOI']}"
+                    elif "ArXiv" in ext:
+                        paper_url = f"https://arxiv.org/abs/{ext['ArXiv']}"
+            if not paper_url and p.get("paperId"):
+                paper_url = f"https://www.semanticscholar.org/paper/{p['paperId']}"
+
+            # Skip paper if no usable URL is available
+            if not paper_url:
+                continue
+
+            # Relevance sentence
+            abstract = p.get("abstract") or ""
+            relevance = f"Explores {search_query} and related methodologies, making it closely related to the uploaded research."
+            if abstract:
+                try:
+                    rel_prompt = f"""
+Given the topic '{search_query}', summarize in exactly ONE concise line why this paper is related to the uploaded research:
+Paper Title: {title}
+Abstract Snippet: {abstract[:300]}
+
+Requirement: Output ONE single sentence explaining why it is relevant. Do not add labels or quotes.
+"""
+                    rel_resp = client.chat.completions.create(
+                        model=GROQ_MODEL,
+                        messages=[{"role": "user", "content": rel_prompt}],
+                        temperature=0.3,
+                        max_tokens=60
+                    )
+                    rel_text = rel_resp.choices[0].message.content.strip().replace("\n", " ")
+                    if rel_text:
+                        relevance = rel_text
+                except Exception:
+                    pass
+
+            results.append({
+                "title": title,
+                "authors": authors_str,
+                "year": year_str,
+                "venue": venue,
+                "relevance": relevance,
+                "url": paper_url
+            })
+
+            if len(results) == 5:
+                break
+
+        return results
 
     except Exception as e:
+        print(f"Error in recommend_related_papers: {e}")
         return [
             {
-                "title": "Recommendation Error",
-                "reason": str(e),
+                "error": "Unable to fetch related papers right now. Please try again.",
+                "title": "Unable to fetch related papers right now. Please try again.",
+                "authors": "",
+                "year": "",
+                "venue": "",
+                "relevance": "Unable to fetch related papers right now. Please try again.",
+                "reason": "Unable to fetch related papers right now. Please try again.",
                 "url": ""
             }
         ]

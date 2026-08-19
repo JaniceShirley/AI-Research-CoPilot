@@ -652,21 +652,78 @@ function App() {
                   <div className="flex-1 bg-slate-950/80 rounded-2xl p-6 border border-slate-800 overflow-y-auto max-h-[550px]">
                     {recommendations.length > 0 ? (
                       <div className="space-y-4">
-                        {recommendations.map((paper, index) => (
-                          <div
-                            key={index}
-                            className="bg-slate-900/90 p-5 rounded-xl border border-slate-800"
-                          >
-                            <h4 className="font-semibold text-orange-300 mb-2 text-base">
-                              {paper.title}
-                            </h4>
-                            <div className="prose prose-invert max-w-none text-slate-300 text-sm">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                                {paper.reason}
-                              </ReactMarkdown>
+                        {recommendations.map((paper, index) => {
+                          if (paper.error || paper.title?.includes("Unable to fetch") || paper.relevance?.includes("Unable to fetch")) {
+                            return (
+                              <div key={index} className="bg-red-950/40 p-5 rounded-xl border border-red-800 text-red-300 text-sm flex items-center gap-2">
+                                <span>⚠️</span> Unable to fetch related papers right now. Please try again.
+                              </div>
+                            )
+                          }
+
+                          if (paper.reason && !paper.authors && !paper.relevance) {
+                            return (
+                              <div key={index} className="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
+                                <h4 className="font-semibold text-orange-300 mb-2 text-base">
+                                  📄 {paper.title}
+                                </h4>
+                                <div className="text-slate-300 text-sm whitespace-pre-wrap">
+                                  {paper.reason}
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <div
+                              key={index}
+                              className="bg-slate-900/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition flex flex-col gap-2 text-sm"
+                            >
+                              <h4 className="font-semibold text-orange-300 text-base leading-snug flex items-start gap-2">
+                                <span>📄</span> <span>{paper.title}</span>
+                              </h4>
+
+                              {paper.authors && (
+                                <p className="text-slate-300 flex items-center gap-2 text-xs">
+                                  <span className="text-sm">👤</span>
+                                  <span className="font-medium text-slate-200">{paper.authors}</span>
+                                </p>
+                              )}
+
+                              <div className="flex items-center gap-6 text-slate-400 text-xs">
+                                {paper.year && (
+                                  <span className="flex items-center gap-1">
+                                    <span>📅</span> {paper.year}
+                                  </span>
+                                )}
+                                {paper.venue && (
+                                  <span className="flex items-center gap-1">
+                                    <span>📚</span> {paper.venue}
+                                  </span>
+                                )}
+                              </div>
+
+                              {paper.relevance && (
+                                <p className="text-slate-300 bg-slate-950/50 p-3 rounded-lg border border-slate-800/80 leading-relaxed text-xs">
+                                  <strong className="text-orange-400">🎯 Relevance:</strong> {paper.relevance}
+                                </p>
+                              )}
+
+                              {paper.url ? (
+                                <a
+                                  href={paper.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-orange-400 hover:text-orange-300 font-medium text-xs self-start mt-1 underline transition"
+                                >
+                                  <span>🔗</span> View Paper
+                                </a>
+                              ) : (
+                                <span className="text-slate-500 text-xs mt-1 italic">🔗 URL not available</span>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
                       <p className="text-slate-400 text-sm">
