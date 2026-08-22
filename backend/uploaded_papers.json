@@ -1,7 +1,12 @@
 [
     {
         "paper_id": 1,
+        "name": "Automatic_license_plate_recognition.pdf",
+        "path": "/Users/janiceshirley/Jan_things/Research_copilot/backend/uploads/Automatic_license_plate_recognition.pdf"
+    },
+    {
+        "paper_id": 2,
         "name": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf",
-        "path": "uploads/A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf"
+        "path": "/Users/janiceshirley/Jan_things/Research_copilot/backend/uploads/A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf"
     }
 ]

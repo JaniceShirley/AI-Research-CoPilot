@@ -39,7 +39,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 st.markdown("""
-<h1 style='text-align: center;'>🧠 AI Research Co-Pilot</h1>
+<h1 style='text-align: center;'>AI Research Co-Pilot</h1>
 <p style='text-align: center; color: gray;'>Analyze, compare and understand research papers intelligently</p>
 """, unsafe_allow_html=True)
 
@@ -47,10 +47,10 @@ st.markdown("""
 mode = st.radio("Select Mode", ["Offline (Ollama)", "Online (Groq)"])
 
 # STEP 1: Upload PDF
-uploaded_files = st.file_uploader("📄 Upload Research Papers", type="pdf", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload Research Papers", type="pdf", accept_multiple_files=True)
 
 if uploaded_files:
-    st.success(f"✅ {len(uploaded_files)} paper(s) uploaded successfully")
+    st.success(f"{len(uploaded_files)} paper(s) uploaded successfully")
 
     chunk_size = 800
     chunks = []
@@ -86,41 +86,41 @@ if uploaded_files:
 
     # LEFT COLUMN → Q&A
     with col1:
-        st.subheader("💬 Ask Questions")
+        st.subheader("Ask Questions")
 
         question = st.text_input(
             "Ask about the papers",
             placeholder="Ask about methods, models, limitations, results..."
         )
 
-        ask_button = st.button("🚀 Ask AI")
+        ask_button = st.button("Ask AI")
 
         # Display chat history
         for chat in st.session_state.chat_history:
             st.markdown(f"""
             <div style='background-color:#1e222b;padding:10px;border-radius:10px;margin-bottom:10px;'>
-            👤 <b>You:</b> {chat['question']}
+            <b>You:</b> {chat['question']}
             </div>
             """, unsafe_allow_html=True)
 
             st.markdown(f"""
             <div style='background-color:#262730;padding:15px;border-radius:10px;margin-bottom:10px;'>
-            🤖 <b>AI:</b><br>{chat['answer']}
+            <b>AI:</b><br>{chat['answer']}
             </div>
             """, unsafe_allow_html=True)
 
     # RIGHT COLUMN → Comparison
     with col2:
-        st.subheader("🔍 Compare Papers")
+        st.subheader("Compare Papers")
 
-        compare_button = st.button("📊 Compare Papers")
-        suggest_button = st.button("💡 Generate Research Ideas")
-        recommend_button = st.button("📚 Recommend Related Papers")
+        compare_button = st.button("Compare Papers")
+        suggest_button = st.button("Generate Research Ideas")
+        recommend_button = st.button("Recommend Related Papers")
 
     if ask_button and question:
         question = question.lower().strip()
 
-        with st.spinner("🤖 Thinking..."):
+        with st.spinner("Thinking..."):
             q_embedding = model.encode([question]).astype('float32')
             D, I = index.search(np.array(q_embedding), k=5)
 
@@ -240,18 +240,18 @@ Answer:
         with col1:
             st.markdown(f"""
             <div style='background-color:#1e222b;padding:10px;border-radius:10px;margin-bottom:10px;'>
-            👤 <b>You:</b> {question}
+            <b>You:</b> {question}
             </div>
             """ , unsafe_allow_html=True)
 
             st.markdown(f"""
             <div style='background-color:#262730;padding:15px;border-radius:10px;margin-bottom:10px;'>
-            🤖 <b>AI:</b><br>{answer}
+            <b>AI:</b><br>{answer}
             </div>
             """, unsafe_allow_html=True)
 
     if compare_button:
-        with st.spinner("🔎 Analyzing papers..."):
+        with st.spinner("Analyzing papers..."):
             # Build balanced paper-wise comparison context
             comparison_context = ""
 
@@ -283,10 +283,10 @@ Context:
 {comparison_context}
 
 Output format:
-📌 Paper-wise Summary:
-📌 Key Differences:
-📌 Contradictions:
-📌 Similarities:
+Paper-wise Summary:
+Key Differences:
+Contradictions:
+Similarities:
 """
 
             if mode == "Offline (Ollama)":
@@ -328,14 +328,14 @@ Output format:
         with col2:
             st.markdown(f"""
             <div style='background-color:#1e222b;padding:15px;border-radius:10px;margin-top:20px;'>
-            📊 <b>Paper Comparison & Contradictions</b><br><br>
+            <b>Paper Comparison & Contradictions</b><br><br>
             {comparison_answer}
             </div>
             """, unsafe_allow_html=True)
 
     # STEP 6: Generate Novel Research Suggestions
     if suggest_button:
-        with st.spinner("💡 Generating novel research ideas..."):
+        with st.spinner("Generating novel research ideas..."):
 
             suggestion_context = ""
 
@@ -364,10 +364,10 @@ Context:
 {suggestion_context}
 
 Output format:
-💡 Combined Research Ideas:
-🚀 Possible Innovations:
-🔬 Future Research Directions:
-⚡ Practical Applications:
+Combined Research Ideas:
+Possible Innovations:
+Future Research Directions:
+Practical Applications:
 """
 
             if mode == "Offline (Ollama)":
@@ -408,7 +408,7 @@ Output format:
                     suggestion_answer = f"Groq API Error: {response_json}"
 
         st.markdown("---")
-        st.subheader("💡 AI-Generated Research Suggestions")
+        st.subheader("AI-Generated Research Suggestions")
 
         st.markdown(f"""
         <div style='background-color:#1e222b;padding:20px;border-radius:12px;margin-top:10px;'>
@@ -417,7 +417,7 @@ Output format:
         """, unsafe_allow_html=True)
 
     if recommend_button:
-        with st.spinner("📚 Finding related papers..."):
+        with st.spinner("Finding related papers..."):
 
             recommendation_context = ""
 
@@ -477,13 +477,13 @@ QUERY: <search query>
                     recommendation_answer = f"Groq API Error: {response_json}"
 
         st.markdown("---")
-        st.subheader("📚 Recommended Related Papers")
+        st.subheader("Recommended Related Papers")
         st.write(recommendation_answer)
 
     # STEP 4: Show Source Context at Bottom
     if ask_button and question:
         st.markdown("---")
-        st.subheader("📚 Retrieved Source Context")
+        st.subheader("Retrieved Source Context")
 
         with st.expander("View Retrieved Chunks"):
             for i, (chunk, source) in enumerate(relevant_chunks):

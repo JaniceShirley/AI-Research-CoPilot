@@ -36,7 +36,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.get("/")
 def home():
-    return {"message": "AI Research Backend Running 🚀"}
+    return {"message": "AI Research Backend Running"}
 
 
 @app.get("/papers")
@@ -59,7 +59,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     total_chunks = process_pdf(file_path)
 
     return {
-        "message": f"✅ {file.filename} processed successfully • {total_chunks} chunks created",
+        "message": f"{file.filename} processed successfully • {total_chunks} chunks created",
         "chunks": total_chunks,
         "paper": paper_entry,
         "papers": get_uploaded_papers()

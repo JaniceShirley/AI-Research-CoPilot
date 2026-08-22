@@ -3,29 +3,97 @@ import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Clean SVG Icon Components                                                */
+/* ──────────────────────────────────────────────────────────────────────── */
+const AskIcon = ({ className = "w-8 h-8" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  </svg>
+)
+
+const CompareIcon = ({ className = "w-8 h-8" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+)
+
+const IdeasIcon = ({ className = "w-8 h-8" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+  </svg>
+)
+
+const RecommendIcon = ({ className = "w-8 h-8" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+  </svg>
+)
+
+const DocumentIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+  </svg>
+)
+
+const UserAvatarIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+)
+
+const AiAvatarIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+)
+
+const CalendarIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+)
+
+const LinkIcon = ({ className = "w-3.5 h-3.5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+  </svg>
+)
+
+const LoadingSpinner = ({ className = "w-4 h-4" }) => (
+  <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  </svg>
+)
+
 const CARDS = [
   {
     id: 'ask',
     title: 'Ask Questions',
-    icon: '💬',
+    icon: <AskIcon className="w-8 h-8 text-cyan-400" />,
+    smallIcon: <AskIcon className="w-5 h-5 text-cyan-400" />,
     desc: 'Chat with uploaded research papers using semantic AI understanding.'
   },
   {
     id: 'compare',
     title: 'Compare Papers',
-    icon: '🔍',
+    icon: <CompareIcon className="w-8 h-8 text-purple-400" />,
+    smallIcon: <CompareIcon className="w-5 h-5 text-purple-400" />,
     desc: 'Detect contradictions, similarities, and technical differences.'
   },
   {
     id: 'ideas',
     title: 'Research Ideas',
-    icon: '💡',
+    icon: <IdeasIcon className="w-8 h-8 text-emerald-400" />,
+    smallIcon: <IdeasIcon className="w-5 h-5 text-emerald-400" />,
     desc: 'Generate novel hybrid AI research ideas from uploaded papers.'
   },
   {
     id: 'recommend',
     title: 'Related Papers',
-    icon: '📚',
+    icon: <RecommendIcon className="w-8 h-8 text-orange-400" />,
+    smallIcon: <RecommendIcon className="w-5 h-5 text-orange-400" />,
     desc: 'Discover research papers related to your uploaded documents.'
   }
 ]
@@ -172,7 +240,7 @@ function App() {
         {
           id: Date.now() + 1,
           sender: 'ai',
-          text: "⚠️ Connection error: Could not fetch answer from backend.",
+          text: "Connection error: Could not fetch answer from backend.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ])
@@ -188,7 +256,7 @@ function App() {
       setComparison(response.data.comparison)
     } catch (error) {
       console.error(error)
-      setComparison("⚠️ Failed to load comparison.")
+      setComparison("Failed to load comparison.")
     } finally {
       setIsComparing(false)
     }
@@ -201,7 +269,7 @@ function App() {
       setIdeas(response.data.ideas)
     } catch (error) {
       console.error(error)
-      setIdeas("⚠️ Failed to generate research ideas.")
+      setIdeas("Failed to generate research ideas.")
     } finally {
       setIsGeneratingIdeas(false)
     }
@@ -210,10 +278,27 @@ function App() {
   const recommendPapers = async () => {
     setIsRecommending(true)
     try {
-      const response = await axios.get('http://127.0.0.1:8000/recommend')
-      setRecommendations(response.data.papers)
+      const response = await axios.get('http://127.0.0.1:8000/recommend', { timeout: 30000 })
+      if (response.data && Array.isArray(response.data.papers)) {
+        setRecommendations(response.data.papers)
+      } else {
+        setRecommendations([
+          {
+            error: "Unable to fetch related papers right now. Please try again.",
+            title: "Unable to fetch related papers right now. Please try again.",
+            relevance: "Unable to fetch related papers right now. Please try again."
+          }
+        ])
+      }
     } catch (error) {
-      console.error(error)
+      console.error('Error fetching recommendations:', error)
+      setRecommendations([
+        {
+          error: "Unable to fetch related papers right now. Please try again.",
+          title: "Unable to fetch related papers right now. Please try again.",
+          relevance: "Unable to fetch related papers right now. Please try again."
+        }
+      ])
     } finally {
       setIsRecommending(false)
     }
@@ -274,6 +359,8 @@ function App() {
     }
   }
 
+  const activeCardObj = CARDS.find((c) => c.id === activeCard)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white p-6 md:p-8 selection:bg-cyan-500 selection:text-black">
       <div className="max-w-7xl mx-auto">
@@ -285,7 +372,7 @@ function App() {
           <div className="transition-all duration-700">
             {/* Title Header */}
             <h1 className="text-5xl md:text-6xl font-extrabold text-center mb-4 bg-gradient-to-r from-cyan-400 via-teal-300 to-blue-500 text-transparent bg-clip-text drop-shadow-md">
-              🧠 AI Research Co-Pilot
+              AI Research Co-Pilot
             </h1>
 
             <p className="text-center text-slate-400 text-lg mb-10 max-w-2xl mx-auto">
@@ -295,7 +382,8 @@ function App() {
             {/* Upload Section */}
             <div className="bg-slate-900/60 border border-slate-800 backdrop-blur-xl rounded-3xl p-8 mb-12 shadow-2xl">
               <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3 text-cyan-300">
-                <span>📄</span> Upload Research Papers
+                <DocumentIcon className="w-6 h-6 text-cyan-400" />
+                <span>Upload Research Papers</span>
               </h2>
 
               <div className="border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 rounded-2xl p-10 text-center hover:bg-cyan-500/5 transition duration-300">
@@ -336,8 +424,9 @@ function App() {
                           key={paper.id}
                           className="flex items-center justify-between bg-slate-900/80 px-4 py-3 rounded-xl border border-slate-800"
                         >
-                          <div className="text-slate-300 text-sm break-all pr-4">
-                            📘 Paper {paper.id} → {paper.name}
+                          <div className="text-slate-300 text-sm break-all pr-4 flex items-center gap-2">
+                            <DocumentIcon className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                            <span>Paper {paper.id} → {paper.name}</span>
                           </div>
 
                           <button
@@ -366,7 +455,7 @@ function App() {
                   className="bg-slate-900/60 border border-slate-800/80 hover:border-cyan-400/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-cyan-500/10 flex flex-col justify-between group"
                 >
                   <div>
-                    <div className="text-4xl mb-4 group-hover:scale-110 transition duration-300">
+                    <div className="mb-4 group-hover:scale-110 transition duration-300">
                       {card.icon}
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-300 transition duration-300">
@@ -379,7 +468,7 @@ function App() {
 
                   <div className="mt-6 flex items-center gap-2 text-cyan-400 text-sm font-semibold group-hover:translate-x-1 transition duration-300">
                     <span>Open Tool</span>
-                    <span>→</span>
+                    <span>&rarr;</span>
                   </div>
                 </div>
               ))}
@@ -400,10 +489,10 @@ function App() {
                   className="w-full mb-6 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-3 rounded-2xl flex items-center justify-between transition duration-300 font-semibold cursor-pointer text-sm"
                 >
                   <span className="flex items-center gap-2">
-                    <span>←</span>
+                    <span>&larr;</span>
                     <span>Close Overview</span>
                   </span>
-                  <span className="text-slate-400 text-xs">✕</span>
+                  <span className="text-slate-400 text-xs">X</span>
                 </button>
 
                 <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500 mb-4 px-2">
@@ -427,7 +516,7 @@ function App() {
                           }
                         `}
                       >
-                        <span className="text-2xl">{card.icon}</span>
+                        <span className="flex-shrink-0">{card.smallIcon}</span>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-sm truncate">
                             {card.title}
@@ -456,20 +545,20 @@ function App() {
               <div className="flex items-center justify-between pb-6 border-b border-slate-800/80 mb-6">
                 <div>
                   <h2 className="text-3xl font-bold flex items-center gap-3 text-white">
-                    <span>{CARDS.find((c) => c.id === activeCard)?.icon}</span>
-                    <span>{CARDS.find((c) => c.id === activeCard)?.title}</span>
+                    <span>{activeCardObj?.smallIcon}</span>
+                    <span>{activeCardObj?.title}</span>
                   </h2>
                   <p className="text-slate-400 text-sm mt-1">
-                    {CARDS.find((c) => c.id === activeCard)?.desc}
+                    {activeCardObj?.desc}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setActiveCard(null)}
-                  className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 w-9 h-9 rounded-full flex items-center justify-center transition duration-200 cursor-pointer border border-slate-700"
+                  className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 w-9 h-9 rounded-full flex items-center justify-center transition duration-200 cursor-pointer border border-slate-700 text-sm font-semibold"
                   title="Close and return to overview"
                 >
-                  ✕
+                  X
                 </button>
               </div>
 
@@ -490,8 +579,8 @@ function App() {
                         }`}
                       >
                         {msg.sender === 'ai' && (
-                          <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-sm flex-shrink-0 mt-1">
-                            🤖
+                          <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center flex-shrink-0 mt-1">
+                            <AiAvatarIcon className="w-4 h-4 text-cyan-300" />
                           </div>
                         )}
 
@@ -517,8 +606,8 @@ function App() {
                         </div>
 
                         {msg.sender === 'user' && (
-                          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm flex-shrink-0 mt-1">
-                            👤
+                          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-1">
+                            <UserAvatarIcon className="w-4 h-4 text-white" />
                           </div>
                         )}
                       </div>
@@ -527,12 +616,12 @@ function App() {
                     {/* AI Thinking Loading Animation */}
                     {isAiThinking && (
                       <div className="flex gap-3 justify-start items-center">
-                        <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-sm flex-shrink-0 animate-pulse">
-                          🤖
+                        <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center flex-shrink-0 animate-pulse">
+                          <AiAvatarIcon className="w-4 h-4 text-cyan-300" />
                         </div>
                         <div className="bg-slate-950/80 border border-slate-800 rounded-2xl px-5 py-3 text-cyan-300 text-xs flex items-center gap-2">
-                          <span className="animate-spin">🌀</span>
-                          <span>AI is reading paper context & formulating response...</span>
+                          <LoadingSpinner className="w-4 h-4 text-cyan-400" />
+                          <span>AI is reading paper context & formulation...</span>
                         </div>
                       </div>
                     )}
@@ -548,7 +637,7 @@ function App() {
                         onClick={() => askAI(chip)}
                         className="bg-slate-800/60 hover:bg-cyan-500/20 hover:border-cyan-400 text-slate-300 hover:text-cyan-200 border border-slate-700/80 px-3 py-1.5 rounded-full text-xs transition duration-200 cursor-pointer"
                       >
-                        💡 {chip}
+                        {chip}
                       </button>
                     ))}
                   </div>
@@ -569,7 +658,7 @@ function App() {
                       disabled={isAiThinking || !question.trim()}
                       className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 disabled:opacity-40 text-black font-bold px-6 py-3 rounded-xl transition duration-300 cursor-pointer text-sm whitespace-nowrap"
                     >
-                      {isAiThinking ? 'Thinking...' : 'Ask AI 🚀'}
+                      {isAiThinking ? 'Thinking...' : 'Ask AI'}
                     </button>
                   </div>
                 </div>
@@ -589,7 +678,7 @@ function App() {
                       disabled={isComparing}
                       className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl transition duration-300 cursor-pointer text-sm flex items-center gap-2"
                     >
-                      {isComparing ? '🔎 Comparing...' : '📊 Run Paper Comparison'}
+                      {isComparing ? 'Comparing...' : 'Run Paper Comparison'}
                     </button>
                   </div>
 
@@ -617,7 +706,7 @@ function App() {
                       disabled={isGeneratingIdeas}
                       className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-black font-semibold px-6 py-3 rounded-xl transition duration-300 cursor-pointer text-sm flex items-center gap-2"
                     >
-                      {isGeneratingIdeas ? '💡 Inventing...' : '🚀 Generate Research Ideas'}
+                      {isGeneratingIdeas ? 'Inventing...' : 'Generate Research Ideas'}
                     </button>
                   </div>
 
@@ -645,7 +734,7 @@ function App() {
                       disabled={isRecommending}
                       className="bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-semibold px-6 py-3 rounded-xl transition duration-300 cursor-pointer text-sm flex items-center gap-2"
                     >
-                      {isRecommending ? '📚 Searching...' : '📚 Recommend Related Papers'}
+                      {isRecommending ? 'Searching...' : 'Recommend Related Papers'}
                     </button>
                   </div>
 
@@ -656,7 +745,7 @@ function App() {
                           if (paper.error || paper.title?.includes("Unable to fetch") || paper.relevance?.includes("Unable to fetch")) {
                             return (
                               <div key={index} className="bg-red-950/40 p-5 rounded-xl border border-red-800 text-red-300 text-sm flex items-center gap-2">
-                                <span>⚠️</span> Unable to fetch related papers right now. Please try again.
+                                <span>Unable to fetch related papers right now. Please try again.</span>
                               </div>
                             )
                           }
@@ -664,8 +753,9 @@ function App() {
                           if (paper.reason && !paper.authors && !paper.relevance) {
                             return (
                               <div key={index} className="bg-slate-900/90 p-5 rounded-xl border border-slate-800">
-                                <h4 className="font-semibold text-orange-300 mb-2 text-base">
-                                  📄 {paper.title}
+                                <h4 className="font-semibold text-orange-300 mb-2 text-base flex items-center gap-2">
+                                  <DocumentIcon className="w-5 h-5 text-orange-400 flex-shrink-0" />
+                                  <span>{paper.title}</span>
                                 </h4>
                                 <div className="text-slate-300 text-sm whitespace-pre-wrap">
                                   {paper.reason}
@@ -680,32 +770,35 @@ function App() {
                               className="bg-slate-900/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition flex flex-col gap-2 text-sm"
                             >
                               <h4 className="font-semibold text-orange-300 text-base leading-snug flex items-start gap-2">
-                                <span>📄</span> <span>{paper.title}</span>
+                                <DocumentIcon className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                                <span>{paper.title}</span>
                               </h4>
 
                               {paper.authors && (
                                 <p className="text-slate-300 flex items-center gap-2 text-xs">
-                                  <span className="text-sm">👤</span>
+                                  <UserAvatarIcon className="w-3.5 h-3.5 text-slate-400" />
                                   <span className="font-medium text-slate-200">{paper.authors}</span>
                                 </p>
                               )}
 
                               <div className="flex items-center gap-6 text-slate-400 text-xs">
                                 {paper.year && (
-                                  <span className="flex items-center gap-1">
-                                    <span>📅</span> {paper.year}
+                                  <span className="flex items-center gap-1.5">
+                                    <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>{paper.year}</span>
                                   </span>
                                 )}
                                 {paper.venue && (
-                                  <span className="flex items-center gap-1">
-                                    <span>📚</span> {paper.venue}
+                                  <span className="flex items-center gap-1.5">
+                                    <DocumentIcon className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>{paper.venue}</span>
                                   </span>
                                 )}
                               </div>
 
                               {paper.relevance && (
                                 <p className="text-slate-300 bg-slate-950/50 p-3 rounded-lg border border-slate-800/80 leading-relaxed text-xs">
-                                  <strong className="text-orange-400">🎯 Relevance:</strong> {paper.relevance}
+                                  <strong className="text-orange-400">Relevance:</strong> {paper.relevance}
                                 </p>
                               )}
 
@@ -716,10 +809,11 @@ function App() {
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 text-orange-400 hover:text-orange-300 font-medium text-xs self-start mt-1 underline transition"
                                 >
-                                  <span>🔗</span> View Paper
+                                  <LinkIcon className="w-3.5 h-3.5" />
+                                  <span>View Paper</span>
                                 </a>
                               ) : (
-                                <span className="text-slate-500 text-xs mt-1 italic">🔗 URL not available</span>
+                                <span className="text-slate-500 text-xs mt-1 italic">URL not available</span>
                               )}
                             </div>
                           )
