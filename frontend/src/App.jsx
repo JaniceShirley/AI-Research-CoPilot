@@ -158,6 +158,8 @@ const markdownComponents = {
   ),
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+
 function App() {
   const [activeCard, setActiveCard] = useState(null)
   const [question, setQuestion] = useState("")
@@ -183,7 +185,7 @@ function App() {
 
   const fetchPapers = async () => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/papers')
+      const response = await axios.get(`${API_BASE_URL}/papers`)
       if (response.data && response.data.papers) {
         setPaperList(
           response.data.papers.map((p) => ({
@@ -221,7 +223,7 @@ function App() {
     setIsAiThinking(true)
 
     try {
-      const response = await axios.get('http://127.0.0.1:8000/ask', {
+      const response = await axios.get(`${API_BASE_URL}/ask`, {
         params: { question: finalQuestion }
       })
 
@@ -252,7 +254,7 @@ function App() {
   const compareAI = async () => {
     setIsComparing(true)
     try {
-      const response = await axios.get('http://127.0.0.1:8000/compare')
+      const response = await axios.get(`${API_BASE_URL}/compare`)
       setComparison(response.data.comparison)
     } catch (error) {
       console.error(error)
@@ -265,7 +267,7 @@ function App() {
   const generateIdeas = async () => {
     setIsGeneratingIdeas(true)
     try {
-      const response = await axios.get('http://127.0.0.1:8000/ideas')
+      const response = await axios.get(`${API_BASE_URL}/ideas`)
       setIdeas(response.data.ideas)
     } catch (error) {
       console.error(error)
@@ -278,7 +280,7 @@ function App() {
   const recommendPapers = async () => {
     setIsRecommending(true)
     try {
-      const response = await axios.get('http://127.0.0.1:8000/recommend', { timeout: 30000 })
+      const response = await axios.get(`${API_BASE_URL}/recommend`, { timeout: 30000 })
       if (response.data && Array.isArray(response.data.papers)) {
         setRecommendations(response.data.papers)
       } else {
@@ -311,7 +313,7 @@ function App() {
     formData.append("file", file)
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/upload', formData)
+      const response = await axios.post(`${API_BASE_URL}/upload`, formData)
 
       setUploadMessages((prev) => [...prev, response.data.message])
 
@@ -333,7 +335,7 @@ function App() {
   const deletePaper = async (paperName) => {
     try {
       const response = await axios.delete(
-        `http://127.0.0.1:8000/paper/${encodeURIComponent(paperName)}`
+        `${API_BASE_URL}/paper/${encodeURIComponent(paperName)}`
       )
       if (response.data && response.data.papers) {
         setPaperList(
