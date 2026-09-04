@@ -25,15 +25,18 @@ embedding_model = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-VECTORSTORE_DIR = os.path.join(BASE_DIR, "vectorstore")
-INDEX_FAISS_PATH = os.path.join(VECTORSTORE_DIR, "index.faiss")
+def get_session_vectorstore_paths(session_id: str):
+    v_dir = os.path.join(BASE_DIR, "vectorstore", session_id)
+    faiss_path = os.path.join(v_dir, "index.faiss")
+    return v_dir, faiss_path
 
 # --------------------------------------------------------
 # Build Vector Store
 # --------------------------------------------------------
 
-def rebuild_vectorstore():
-    papers = get_uploaded_papers()
+def rebuild_vectorstore(session_id: str):
+    vectorstore_dir, index_faiss_path = get_session_vectorstore_paths(session_id)
+    papers = get_uploaded_papers(session_id)
     documents = []
 
     splitter = RecursiveCharacterTextSplitter(
@@ -63,12 +66,12 @@ def rebuild_vectorstore():
 
     # If no valid documents/papers remain
     if not documents:
-        if os.path.exists(INDEX_FAISS_PATH):
+        if os.path.exists(index_faiss_path):
             try:
-                os.remove(INDEX_FAISS_PATH)
+                os.remove(index_faiss_path)
             except OSError:
                 pass
-        pkl_path = os.path.join(VECTORSTORE_DIR, "index.pkl")
+        pkl_path = os.path.join(vectorstore_dir, "index.pkl")
         if os.path.exists(pkl_path):
             try:
                 os.remove(pkl_path)
@@ -76,35 +79,38 @@ def rebuild_vectorstore():
                 pass
         return
 
+    os.makedirs(vectorstore_dir, exist_ok=True)
     vectorstore = FAISS.from_documents(
         documents,
         embedding_model
     )
 
-    vectorstore.save_local(VECTORSTORE_DIR)
+    vectorstore.save_local(vectorstore_dir)
 
 # --------------------------------------------------------
 # Upload Paper
 # --------------------------------------------------------
 
-def process_pdf(pdf_path):
-    rebuild_vectorstore()
-    if not os.path.exists(INDEX_FAISS_PATH):
+def process_pdf(session_id: str, pdf_path: str):
+    rebuild_vectorstore(session_id)
+    vectorstore_dir, index_faiss_path = get_session_vectorstore_paths(session_id)
+    if not os.path.exists(index_faiss_path):
         return 0
     vectorstore = FAISS.load_local(
-        VECTORSTORE_DIR,
+        vectorstore_dir,
         embedding_model,
         allow_dangerous_deserialization=True
     )
     return vectorstore.index.ntotal
 
-def ask_question(question):
-    if not os.path.exists(INDEX_FAISS_PATH):
+def ask_question(session_id: str, question: str):
+    vectorstore_dir, index_faiss_path = get_session_vectorstore_paths(session_id)
+    if not os.path.exists(index_faiss_path):
         return "No research papers uploaded yet."
 
     try:
         vectorstore = FAISS.load_local(
-            VECTORSTORE_DIR,
+            vectorstore_dir,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -190,7 +196,7 @@ def ask_question(question):
         paper_match = re.search(r"paper\s+(\d+)", question_lower)
 
         # Fetch uploaded papers list to allow safe paper selection
-        papers = get_uploaded_papers()
+        papers = get_uploaded_papers(session_id)
 
         selected_paper = None
         if paper_match:
@@ -219,11 +225,11 @@ def ask_question(question):
             return "That question isn't related to the uploaded research papers. I can help you analyze, summarize, compare, or discuss your uploaded papers."
 
         # From here on, the question may require the vectorstore (PAPER_METADATA, PAPER_CONTENT, or POTENTIAL_CONTENT)
-        if not os.path.exists(INDEX_FAISS_PATH):
+        if not os.path.exists(index_faiss_path):
             return "No research papers uploaded yet."
 
         vectorstore = FAISS.load_local(
-            VECTORSTORE_DIR,
+            vectorstore_dir,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -470,15 +476,15 @@ User Question:
         return f"Error during retrieval: {str(e)}"
 
 
-def compare_papers():
-
-    if not os.path.exists(INDEX_FAISS_PATH):
+def compare_papers(session_id: str):
+    vectorstore_dir, index_faiss_path = get_session_vectorstore_paths(session_id)
+    if not os.path.exists(index_faiss_path):
         return "No papers uploaded."
 
     try:
 
         vectorstore = FAISS.load_local(
-            VECTORSTORE_DIR,
+            vectorstore_dir,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -560,15 +566,15 @@ Generate a professional research comparison report.
         return f"Comparison Error: {str(e)}"
 
 
-def generate_research_ideas():
-
-    if not os.path.exists(INDEX_FAISS_PATH):
+def generate_research_ideas(session_id: str):
+    vectorstore_dir, index_faiss_path = get_session_vectorstore_paths(session_id)
+    if not os.path.exists(index_faiss_path):
         return "No papers uploaded."
 
     try:
 
         vectorstore = FAISS.load_local(
-            VECTORSTORE_DIR,
+            vectorstore_dir,
             embedding_model,
             allow_dangerous_deserialization=True
         )
@@ -643,9 +649,9 @@ Generate at least 3 strong research ideas.
 
 
 # New function: recommend_related_papers using real Semantic Scholar API
-def recommend_related_papers():
-
-    if not os.path.exists(INDEX_FAISS_PATH):
+def recommend_related_papers(session_id: str):
+    vectorstore_dir, index_faiss_path = get_session_vectorstore_paths(session_id)
+    if not os.path.exists(index_faiss_path):
         return [
             {
                 "title": "No papers uploaded",
@@ -659,7 +665,7 @@ def recommend_related_papers():
 
     try:
         vectorstore = FAISS.load_local(
-            VECTORSTORE_DIR,
+            vectorstore_dir,
             embedding_model,
             allow_dangerous_deserialization=True
         )

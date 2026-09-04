@@ -160,6 +160,22 @@ const markdownComponents = {
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
+function getOrCreateSessionId() {
+  let sid = localStorage.getItem('research_copilot_session_id')
+  if (!sid) {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      sid = crypto.randomUUID()
+    } else {
+      sid = 'sess-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11)
+    }
+    localStorage.setItem('research_copilot_session_id', sid)
+  }
+  return sid
+}
+
+const SESSION_ID = getOrCreateSessionId()
+axios.defaults.headers.common['X-Session-ID'] = SESSION_ID
+
 function App() {
   const [activeCard, setActiveCard] = useState(null)
   const [question, setQuestion] = useState("")
