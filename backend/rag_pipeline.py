@@ -752,86 +752,94 @@ Excerpts:
             return []
 
         results = []
+        candidate_papers = []
         for p in raw_papers:
             title = p.get("title")
             if not title:
                 continue
 
-            # Authors
             authors_list = p.get("authors") or []
-            if authors_list:
-                authors_str = ", ".join([a.get("name", "") for a in authors_list if a.get("name")])
-            else:
-                authors_str = "Unknown Authors"
-
-            # Year
+            authors_str = ", ".join([a.get("name", "") for a in authors_list if a.get("name")]) if authors_list else "Unknown Authors"
             year_val = p.get("year")
             year_str = str(year_val) if year_val else "N/A"
+            venue = p.get("venue") or (p.get("publicationVenue", {}).get("name") if isinstance(p.get("publicationVenue"), dict) else "Academic Venue")
 
-            # Venue / Journal
-            venue = p.get("venue")
-            if not venue and p.get("publicationVenue"):
-                pub_v = p.get("publicationVenue")
-                if isinstance(pub_v, dict):
-                    venue = pub_v.get("name")
-            if not venue:
-                venue = "Academic Venue"
-
-            # URL extraction logic
             paper_url = p.get("url")
-            if not paper_url and p.get("openAccessPdf"):
-                pdf_info = p.get("openAccessPdf")
-                if isinstance(pdf_info, dict):
-                    paper_url = pdf_info.get("url")
-            if not paper_url and p.get("externalIds"):
+            if not paper_url and p.get("openAccessPdf") and isinstance(p.get("openAccessPdf"), dict):
+                paper_url = p.get("openAccessPdf").get("url")
+            if not paper_url and p.get("externalIds") and isinstance(p.get("externalIds"), dict):
                 ext = p.get("externalIds")
-                if isinstance(ext, dict):
-                    if "DOI" in ext:
-                        paper_url = f"https://doi.org/{ext['DOI']}"
-                    elif "ArXiv" in ext:
-                        paper_url = f"https://arxiv.org/abs/{ext['ArXiv']}"
+                if "DOI" in ext:
+                    paper_url = f"https://doi.org/{ext['DOI']}"
+                elif "ArXiv" in ext:
+                    paper_url = f"https://arxiv.org/abs/{ext['ArXiv']}"
             if not paper_url and p.get("paperId"):
                 paper_url = f"https://www.semanticscholar.org/paper/{p['paperId']}"
 
-            # Skip paper if no usable URL is available
             if not paper_url:
                 continue
 
-            # Relevance sentence
-            abstract = p.get("abstract") or ""
-            relevance = f"Explores {search_query} and related methodologies, making it closely related to the uploaded research."
-            if abstract:
-                try:
-                    rel_prompt = f"""
-Given the topic '{search_query}', summarize in exactly ONE concise line why this paper is related to the uploaded research:
-Paper Title: {title}
-Abstract Snippet: {abstract[:300]}
-
-Requirement: Output ONE single sentence explaining why it is relevant. Do not add labels or quotes.
-"""
-                    rel_resp = client.chat.completions.create(
-                        model=GROQ_MODEL,
-                        messages=[{"role": "user", "content": rel_prompt}],
-                        temperature=0.3,
-                        max_tokens=60
-                    )
-                    rel_text = rel_resp.choices[0].message.content.strip().replace("\n", " ")
-                    if rel_text:
-                        relevance = rel_text
-                except Exception:
-                    pass
-
-            results.append({
+            abstract = (p.get("abstract") or "")[:300]
+            candidate_papers.append({
                 "title": title,
                 "authors": authors_str,
                 "year": year_str,
                 "venue": venue,
-                "relevance": relevance,
+                "abstract": abstract,
                 "url": paper_url
             })
 
-            if len(results) == 5:
+            if len(candidate_papers) == 5:
                 break
+
+        if not candidate_papers:
+            return []
+
+        # Single batched LLM call for all 5 papers using GROQ_MODEL (Llama 3.3 70B) for 4x speedup
+        default_relevance = [f"Explores {search_query} and related methodologies."] * len(candidate_papers)
+        try:
+            prompt_items = "\n".join([
+                f"Paper {i+1}: Title: {p['title']} | Abstract Snippet: {p['abstract']}"
+                for i, p in enumerate(candidate_papers)
+            ])
+            batch_prompt = f"""Given the main research topic '{search_query}', write exactly ONE concise single-sentence relevance summary for each paper below explaining why it connects to the uploaded research.
+
+{prompt_items}
+
+Requirement: Output numbered list lines (1. ..., 2. ..., etc.) containing ONLY the single relevance sentence per paper without markdown labels or preamble.
+"""
+            batch_resp = client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[{"role": "user", "content": batch_prompt}],
+                temperature=0.3,
+                max_tokens=300
+            )
+            rel_lines = [
+                line.strip().lstrip("0123456789.-) ").strip()
+                for line in batch_resp.choices[0].message.content.strip().split("\n")
+                if line.strip()
+            ]
+            for i, p in enumerate(candidate_papers):
+                p_rel = rel_lines[i] if i < len(rel_lines) and len(rel_lines[i]) > 5 else default_relevance[i]
+                results.append({
+                    "title": p["title"],
+                    "authors": p["authors"],
+                    "year": p["year"],
+                    "venue": p["venue"],
+                    "relevance": p_rel,
+                    "url": p["url"]
+                })
+        except Exception as batch_err:
+            print(f"Batch relevance warning: {batch_err}")
+            for i, p in enumerate(candidate_papers):
+                results.append({
+                    "title": p["title"],
+                    "authors": p["authors"],
+                    "year": p["year"],
+                    "venue": p["venue"],
+                    "relevance": default_relevance[i],
+                    "url": p["url"]
+                })
 
         return results
 
