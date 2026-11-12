@@ -1,0 +1,203 @@
+{
+  "name": "parkease-papers-v1",
+  "status": "draft",
+  "description": "Questions about the two research papers previously uploaded to the app. Every expected answer and evidence quote was taken from the text that pypdf extracts from these exact PDFs (see sha256). Drafted by Claude Code from the extracted text; NOT yet reviewed by a human. Set \"verified\": true on each item after checking it against the paper, and \"status\": \"verified\" when all are checked.",
+  "papers": [
+    {
+      "file": "Automatic_license_plate_recognition.pdf",
+      "title": "Automatic License Plate Recognition (Chang, Chen, Chung, Chen; IEEE T-ITS vol. 5 no. 1, 2004)",
+      "sha256": "e024e7490b9ec823397f2420f31349a00d20b31373a9d3110b0ffc914cf0c361"
+    },
+    {
+      "file": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf",
+      "title": "A Dual AI and IoT Approach to Smart Parking: License Plate Recognition and Dynamic Pricing (ICDICI-2025)",
+      "sha256": "2eb35be051f72dc8a97e6a3a8a18a351c105075abbf9f29e876cc01db6ffd542"
+    }
+  ],
+  "items": [
+    {
+      "id": "alpr-modules",
+      "question": "What are the two main modules of the proposed license plate recognition technique in the Automatic License Plate Recognition paper?",
+      "question_type": "content",
+      "expected_answer": "A license plate locating module (based on fuzzy disciplines) that extracts license plates from the input image, and a license number identification module (based on neural networks) that identifies the number on the plate.",
+      "key_facts": ["locating module", "identification module", "fuzzy", "neural"],
+      "relevant_sources": [
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 1,
+         "evidence": "two main modules: a license plate locating module and a license number identification module. The former characterized by fuzzy disciplines attempts to extract license plates from an input image"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "alpr-success-rates",
+      "question": "What were the experimental success rates for license plate location, license number identification, and the overall LPR algorithm?",
+      "question_type": "content",
+      "expected_answer": "License plate location succeeded 97.9% of the time (1088 test images, 23 failures); license number identification succeeded 95.6%; combined, the overall success rate is 93.7%.",
+      "key_facts": ["97.9%", "95.6%", "93.7%"],
+      "relevant_sources": [
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 1,
+         "evidence": "the license plate location rate of success is 97.9%"},
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 1,
+         "evidence": "the identification rate of success is 95.6%. Combining the above two rates, the overall rate of success for our LPR algorithm is 93.7%"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "alpr-plate-colors",
+      "question": "Which colors does the license plate locating approach look for, and why only those colors?",
+      "question_type": "content",
+      "expected_answer": "White, black, red and green, because only these four distinct colors are used on the Taiwanese license plate styles the paper considers; the color edge detector is sensitive only to black-white, red-white and green-white edges.",
+      "key_facts": ["white", "black", "red", "green"],
+      "relevant_sources": [
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 2,
+         "evidence": "only four distinct colors (white, black, red, and green) are utilized in these license plates"},
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 2,
+         "evidence": "The edge detector is sensitive to only three kinds of edges, black-white, red-white, and green-white"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "alpr-1-7-confusion",
+      "question": "Which character misidentification most often troubled the license number identification module, and what caused it?",
+      "question_type": "content",
+      "expected_answer": "The numeral 1 being misidentified as 7 (the \"1&7 confusion\"); the reverse never occurred. It is caused by the module recognizing characters from their contours, which preserve only partial information about shape.",
+      "key_facts": ["contours"],
+      "relevant_sources": [
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 10,
+         "evidence": "This is essentially caused by the fact that the module recognizes characters based on their contours and that contours preserve only partial information about object shapes"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "alpr-processing-time",
+      "question": "How long does the LPR algorithm take to process an image, and on what hardware was it run?",
+      "question_type": "content",
+      "expected_answer": "It runs on a Pentium IV 1.6 GHz PC. The location module takes about 0.4 seconds to find all plate candidates in an image; the identification module takes about two seconds per plate candidate, mainly due to the neural-based OCR running on a sequential computer.",
+      "key_facts": ["Pentium IV", "0.4"],
+      "relevant_sources": [
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 10,
+         "evidence": "Currently, our LPR algorithm is running on a Pentium IV-1.6 GHz PC. The license plate location module takes about 0.4"},
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 11,
+         "evidence": "primarily due to the neural-based OCR process running on a sequential computer"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "alpr-future-work",
+      "question": "What future improvements are suggested for the license number identification stage in the 2004 LPR paper?",
+      "question_type": "content",
+      "expected_answer": "Deriving intrinsic images (illumination, reflectance, depth); adding a normalization step that transforms extracted plates to a prescribed size and orientation; and investigating supervised character-recognition approaches, since the current neural approach is unsupervised.",
+      "key_facts": ["intrinsic images", "normalization", "supervised"],
+      "relevant_sources": [
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 11,
+         "evidence": "In our future work, techniques for deriving intrinsic images"},
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 11,
+         "evidence": "the proposed neural approach for character recognition is basically unsupervised. In general, supervised methods can outperform unsupervised ones if rich training sets are available"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "dual-detection-ocr",
+      "question": "In the dual AI and IoT smart parking paper, which model detects license plates and which OCR engine reads the plate text?",
+      "question_type": "content",
+      "expected_answer": "YOLOv12 detects vehicles and license plates; Tesseract OCR extracts the license plate text.",
+      "key_facts": ["YOLOv12", "Tesseract"],
+      "relevant_sources": [
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 1,
+         "evidence": "the system utilizes YOLOv12, an object detection algorithm, to impro ve real-time vehicle identification and license plate recognition then perform OCR using TesseractOCR to detect the license plate details"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "dual-dataset-split",
+      "question": "How many images are in the dataset used for the YOLOv12 license plate model, and how was the dataset split?",
+      "question_type": "content",
+      "expected_answer": "9,551 images in total, split into a training set of 6,685 images (70%), a validation set of 1,911 images (20%) and a test set of 955 images (10%).",
+      "key_facts": ["9,551", "6,685", "1,911", "955"],
+      "relevant_sources": [
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 4,
+         "evidence": "which consists of a total of 9,551 images. The dataset is divided into three subsets: Training Set (6,685 images, 70%), Validation Set (1,911 images, 20%), and Test Set (955 images, 10%)"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "dual-yolo-results",
+      "question": "What precision, recall and mAP50 did the YOLOv12 model achieve in the final training epoch?",
+      "question_type": "content",
+      "expected_answer": "Precision 96.35%, recall 88.85% and mAP50 93.96% in the final (100th) epoch.",
+      "key_facts": ["96.35%", "88.85%", "93.96%"],
+      "relevant_sources": [
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 7,
+         "evidence": "with the final epoch achieving a precision of 96.35%, recall of 88.85%, and mAP50 of 93.96%"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "dual-pricing-model",
+      "question": "Which algorithm is used for dynamic pricing, which input features does it use, and what error did it achieve?",
+      "question_type": "content",
+      "expected_answer": "XGBoost. It predicts parking charges from duration, vehicle type, weather and congestion level, with a Mean Absolute Error (MAE) of 0.92.",
+      "key_facts": ["XGBoost", "0.92", "duration", "weather", "congestion"],
+      "relevant_sources": [
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 8,
+         "evidence": "The XGBoost model of dynamic pricing showed high predictive capability with a Mean Absolute Error (MAE) of 0.92, signifying high precision in predicting parking charges based on input features like duration, vehicle type, weather, and congestion levels"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "dual-error-patterns",
+      "question": "What error patterns or limitations were found in the license plate recognition results of the smart parking system?",
+      "question_type": "content",
+      "expected_answer": "Some similar character pairs (e.g. '0'/'O', '5'/'S') were identified at only 20-40% rates; 8 to 9% of instances were partial misreads (1-2 characters wrong per plate); and 6.04% were localization errors. Low light, motion blur, occlusions and similar-looking characters are named as causes.",
+      "key_facts": ["20-40%", "6.04%"],
+      "relevant_sources": [
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 8,
+         "evidence": "with some pairs being identified with rates of 20-40% (e.g., '0'/'O', '5'/'S')"},
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 8,
+         "evidence": "(6.04% errors of localizations, where bounding boxes were mislocalized)"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "dual-pricing-future",
+      "question": "What future work is proposed for the XGBoost dynamic pricing model?",
+      "question_type": "content",
+      "expected_answer": "Feeding real-time data (e.g. event schedules or traffic patterns) into the XGBoost model to refine demand prediction, and using ensemble methods or deep learning to reduce errors and include extra variables such as seasonal demand or special events; periodic retraining is also mentioned.",
+      "key_facts": ["event schedules", "traffic patterns", "seasonal demand"],
+      "relevant_sources": [
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 9,
+         "evidence": "adding real -time data feeds (e.g., event schedules or traffic patterns) into the XGBoost model will refine dem and prediction"},
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 8,
+         "evidence": "Ensemble methods or deep learning could be utilized in future work to minimize errors further and include extra variables such as seasonal demand or special events"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "dual-authors",
+      "question": "Who are the authors of the dual AI and IoT smart parking paper?",
+      "question_type": "metadata",
+      "expected_answer": "Shreya Ravi Kottayakkaran, Janice Shirley L, Donna Evangelin R, and Dr. J. Shajeena (SRM Institute of Science and Technology, Tiruchirappalli).",
+      "key_facts": ["Kottayakkaran", "Janice Shirley", "Donna Evangelin", "Shajeena"],
+      "relevant_sources": [
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 1,
+         "evidence": "Shreya Ravi Kottayakkaran"},
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 1,
+         "evidence": "Donna Evangelin R"}
+      ],
+      "verified": false
+    },
+    {
+      "id": "cross-compare-lpr",
+      "question": "Compare the license plate recognition approaches used in the two papers.",
+      "question_type": "comparison",
+      "expected_answer": "The 2004 paper locates plates with a fuzzy-logic color edge detector (looking for the four plate colors) and identifies characters with a self-organizing neural OCR. The 2025 smart parking paper detects plates with the YOLOv12 deep object detector and reads them with Tesseract OCR.",
+      "key_facts": ["YOLOv12", "Tesseract", "fuzzy", "neural"],
+      "relevant_sources": [
+        {"paper": "Automatic_license_plate_recognition.pdf", "page": 1,
+         "evidence": "two main modules: a license plate locating module and a license number identification module. The former characterized by fuzzy disciplines"},
+        {"paper": "A_Dual_AI_and_IoT_Approach_to_Smart_Parking_License_Plate_Recognition_and_Dynamic_Pricing.pdf", "page": 1,
+         "evidence": "the system utilizes YOLOv12, an object detection algorithm, to impro ve real-time vehicle identification and license plate recognition then perform OCR using TesseractOCR"}
+      ],
+      "verified": false
+    }
+  ]
+}

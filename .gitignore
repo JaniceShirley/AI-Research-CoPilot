@@ -7,3 +7,7 @@ uploads/
 __pycache__/
 backend/metadata/
 *.worktrees/
+
+# RAG evaluation outputs and local copies of papers
+evaluation/results/
+evaluation/papers/
