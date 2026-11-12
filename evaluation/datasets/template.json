@@ -1,0 +1,29 @@
+{
+  "name": "my-dataset-v1",
+  "status": "draft",
+  "description": "Describe which papers this covers and who wrote / checked the questions. Replace every <...> placeholder; nothing in this file is real data.",
+  "papers": [
+    {
+      "file": "my_paper.pdf",
+      "title": "<optional: paper title for the report>",
+      "sha256": ""
+    }
+  ],
+  "items": [
+    {
+      "id": "<unique-id>",
+      "question": "<a question a user would type into the app>",
+      "question_type": "<content | metadata | comparison>",
+      "expected_answer": "<the correct answer, written from the paper>",
+      "key_facts": ["<optional: short strings that a correct answer must contain, e.g. a number or model name>"],
+      "relevant_sources": [
+        {
+          "paper": "my_paper.pdf",
+          "page": 1,
+          "evidence": "<a verbatim quote (ideally 1-2 sentences, under 250 characters) from that page that supports the answer>"
+        }
+      ],
+      "verified": false
+    }
+  ]
+}

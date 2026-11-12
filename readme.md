@@ -74,6 +74,9 @@ npm run dev
 - `app.py` is an older Streamlit prototype and is not the main application surface today.
 - PDF files are stored under `backend/uploads` when uploaded through the app.
 
+## Evaluation
+`evaluation/` contains an offline evaluation framework for the RAG pipeline (Recall@K, faithfulness, answer relevance, latency). See [evaluation/README.md](evaluation/README.md).
+
 ## Recommended workflow
 1. Start backend and frontend.
 2. Upload one or more PDFs.
